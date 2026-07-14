@@ -1,0 +1,19 @@
+# Python
+venv/
+__pycache__/
+*.py[cod]
+.env
+
+# Jupyter
+.ipynb_checkpoints
+
+# LaTeX Auxiliary Files
+paper/*.aux
+paper/*.fdb_latexmk
+paper/*.fls
+paper/*.log
+paper/*.out
+paper/*.synctex.gz
+paper/*.toc
+paper/*.bbl
+paper/*.blg
