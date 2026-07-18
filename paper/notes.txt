@@ -1,0 +1,61 @@
+Wordle no longer has an official solution list. The word each day is manually chosen by an editor.
+It seems to still be hovering around 3000 valid words but this may be meaningless.
+Wordle has now started repeating words, with 1 in 9 words being repeats since the announcement.
+
+WordleBot uses word frequency data from NYT usage, Google NGram and user guess frequency.
+It then takes the most common 4500 as its "valid solutions".
+
+Wordlebot code has a set of stored priors.
+
+As of June 29th 2023 it takes on average 3.5 guesses.
+Current performance may be worse as less common words may be used now.
+
+As we can't easily test WordleBot itself we shall compare performance with a system without any knowledge of previous answers as our baseline.
+This will be as faithful a recreation of WordleBot as possible, taking into account the priors found from its client side-code and using all the information about it on the FAQ, such as the following:
+It has a 3200 word list of plausible solutions
+Once words reach a frequency threshold they are considered "common" and equally weighted
+Simple plurals and past tenses are considered unlikely to be solutions
+
+Fortunately we can just use the priors to make a bot and this uses all these nuances, giving us a firm baseline.
+WordleBot has an "expected guesses" stat so might be using full lookahead and decision trees instead of just Shannon entropy.
+
+(Bot Stats are in a spreadsheet which will be added to repo eventually)
+
+Bot 1:
+Uses Shannon entropy (1 turn) and treats all valid guesses as equally likely solutions.
+
+I want Bot 2 (or one of the next ones at least) to be identical to the current WordleBot.
+I also found a set of priors on the Wordle Tools website which I cross-referenced with the ones I scraped.
+After doing some analysis in prior_checking.ipynb, I found that there was a significant discrepancy between the values.
+About 1450 words had different values, but all of these were words which had already been played.
+This led to a mismatch for every word from 13/10/22 to 5/7/26. This implies that the Wordle Tools data is old and the WordleBot data is new, up to recently.
+Hence the bot hasn't been updated (as of 17/7/26). As I want to recreate it but can't find the full code, I can hence use feedback it's given me recently to see if it matches.
+There is also an "upload screenshot" feature which I can use for additional checking to see how faithful my recreation is.
+
+Bot 2:
+Uses Shannon entropy (1 turn) and treats uses the priors scraped from the NYT site (cleaned_priors.csv). Only guesses words with non-zero priors.
+
+Example data used to check Bot 2. Here I've guessed SLATE first and these were the best second guesses according to WordleBot:
+18/7/26 - FOUND 99, IRONY 95, ROUND 95, BRINY 94
+17/7/26 - RANGY 99, REPAY 98, RENAL 95, RANDY 93
+16/7/26 - TURBO 99, WOUND 99, CURIO 99, BRUIN 99
+15/7/26 - PANSY 99, RAINY 99, BRINY 99, RAINS 95
+14/7/26 - STEAK 99, STEAD 99, MIKED 77, MOWED 77
+
+Here are the results of Bot 2 in the same scenarios:
+18/7/26 - IRONY, ROUND, FOUND, HOUND
+17/7/26 - RANGY, REPAY, RANDY, REPEL
+16/7/26 - TURBO, CURIO, BRUIN, TUTOR
+15/7/26 - RAINY, BRINY, PRISM, ROBIN
+14/7/26 - WAKED, MIKED, MEWED, MOWED
+
+There are clear discrepancies here. One reason could be that WordleBot can guess around 4500 words, but Bot 2 was restricted to around 3200.
+The more likely reason is that WordleBot uses expected guesses rather than expected entropy - which is what Bot 3 will do.
+Due to very long running times this version of Bot 3 is still operating on a lot of heuristics, and is basically just a more efficient version of Bot 2.
+
+Here are the results of Bot 3 in the same scenarios:
+18/7/26 - IRONY, ROUND, FOUND, HOUND
+17/7/26 - RANGY, REPAY, RANDY, RENAL
+16/7/26 - TURBO, CURIO, BRUIN, WOUND
+15/7/26 - RAINY, PANSY, BRINY, BASIN
+14/7/26 - STEAK, STEAD, WAKED, MIKED

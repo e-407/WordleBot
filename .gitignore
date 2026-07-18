@@ -17,3 +17,4 @@ paper/*.synctex.gz
 paper/*.toc
 paper/*.bbl
 paper/*.blg
+data/feedback_matrix.npy
