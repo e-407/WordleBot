@@ -51,7 +51,7 @@ Here are the results of Bot 2 in the same scenarios:
 
 There are clear discrepancies here. One reason could be that WordleBot can guess around 4500 words, but Bot 2 was restricted to around 3200.
 The more likely reason is that WordleBot uses expected guesses rather than expected entropy - which is what Bot 3 will do.
-Due to very long running times this version of Bot 3 is still operating on a lot of heuristics, and is basically just a more efficient version of Bot 2.
+Due to very long running times this version of Bot 3 is still operating on a lot of heuristics.
 
 Here are the results of Bot 3 in the same scenarios:
 18/7/26 - IRONY, ROUND, FOUND, HOUND
@@ -59,3 +59,50 @@ Here are the results of Bot 3 in the same scenarios:
 16/7/26 - TURBO, CURIO, BRUIN, WOUND
 15/7/26 - RAINY, PANSY, BRINY, BASIN
 14/7/26 - STEAK, STEAD, WAKED, MIKED
+
+After refining Bot 3 to use expected guesses with a two-turn lookahead (and then using entropy to estimate) it gave:
+18/7/26 - FOUND 99, ROUND 97, BRINY 95, IRONY 95
+17/7/26 - RANGY 99, REPAY 95, RANDY 94, RANDY 91
+16/7/26 - TURBO 99, WOUND 98, CURIO 98, BRUIN 98
+15/7/26 - PANSY 99, RAINY 98, BRINY 98, BASIN 94
+14/7/26 - STEAK 99, STEAD 99, MEWED 75, MIKED 75
+
+This is now extremely close to WordleBot's suggestions. At the moment the bot looks at the 30 candidates with highest entropy, and the 30 most probable solutions.
+However, it still only guesses words with non-zero priors. Hence we'll try to recreate WordleBot's 4500 word guess list.
+
+In my search to find the 4500 word list, I stumbled upon the list of priors for the version of WordleBot which doesn't take past solutions into account.
+It turns out this is identical to the list I found on Wordle Tools.
+
+Testing the same scenarios with the "unseen" version of WordleBot gives:
+18/7/26 - IRONY 99, BRINY 99, RHINO 98, NORTH 95
+17/7/26 - RANGY 99, RANDY 96, NERDY 93, GERMY 92
+16/7/26 - TURBO 99, CURIO 93, TUTOR 93, BRUIN 93
+15/7/26 - OASIS 99, BASIN 99, BASIS 98, MOSSY 96
+14/7/26 - MIKED 99, MOWED 99, WAKED 99, MEWED 99
+
+The refined Bot 3 using the unseen priors gave:
+18/7/26 - BRINY 99, IRONY 95, RHINO 92, MOURN 91
+17/7/26 - RANGY 99, RANDY 91, NERDY 89, GERMY 89
+16/7/26 - TURBO 99, BRUIN 92, CURIO 92, TROUT 92
+15/7/26 - OASIS 99, BASIN 98, BASIS 97, MOSSY 94
+14/7/26 - MEWED 99, MIKED 99, MOWED 99, STEAD 99
+
+Again, small discrepancies. To further test how the bots are different, I went back to WordleBot's expected guesses estimate.
+It provides this for its best guess, and for the same scenarios it gives:
+
+NYT vs Bot 3 (Seen)
+18/7/26 - 1.38 vs 1.34
+17/7/26 - 1.43 vs 1.37
+16/7/26 - 1.09 vs 1.09
+15/7/26 - 1.06 vs 1.06
+14/7/26 - 0.76 vs 0.76
+
+NYT vs Bot 3 (Unseen)
+18/7/26 - 1.53 vs 1.50
+17/7/26 - 1.51 vs 1.47
+16/7/26 - 1.07 vs 1.07
+15/7/26 - 1.16 vs 1.14
+14/7/26 - 1 vs 1
+
+Bot 3 always offered a lower or equal expected guess value. This implies our bot's heuristics may be too optimistic.
+This is because we'd expect it to have a higher expected guess value than NYT's bot because it can only guess from a smaller range of words.

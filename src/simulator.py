@@ -204,7 +204,7 @@ if __name__ == "__main__":
     # 1. Resolve paths dynamically based on the script's location
     BASE_DIR = Path(__file__).resolve().parent.parent
     WORDS_FILE = BASE_DIR / 'data' / 'allowed_guesses.csv'
-    PRIORS_FILE = BASE_DIR / 'data' / 'cleaned_priors.csv'
+    PRIORS_FILE = BASE_DIR / 'data' / 'unseen_cleaned_priors.csv'
     
     if not WORDS_FILE.exists() or not PRIORS_FILE.exists():
         print(f"Error: Missing required files.\nEnsure they exist at:\n- {WORDS_FILE}\n- {PRIORS_FILE}")
@@ -215,25 +215,8 @@ if __name__ == "__main__":
         all_words = engine.allowed_guesses
         priors_path_str = str(PRIORS_FILE)
         
-        # 3. Initialize Bot 1
-        # CHANGED: Adjusted Bot1 instantiation to perfectly match its new constructor signature:
-        # Bot1(allowed_guesses, feedback_matrix, targets_list=None)
-        print("\nInitializing Baseline Bots...")
-        try:
-            bot1 = Bot1(allowed_guesses=all_words, feedback_matrix=engine.feedback_matrix)
-        except Exception as e:
-            print(f"Failed to initialize Bot1: {e}")
-            bot1 = None
-            
-        # 4. Initialize Bot 2
-        try:
-            bot2 = Bot2(all_words, priors_path_str)
-        except Exception as e:
-            print(f"Failed to initialize Bot2: {e}")
-            bot2 = None
-
-        # 5. Initialize the newly optimized NumPy Bot 3
-        print("Initializing Bot 3 with Engine Matrix...")
+        # 3. Initialize the newly optimized 2-Turn Lookahead Bot 3
+        print("Initializing Bot 3 (2-Turn Lookahead) with Engine Matrix...")
         try:
             bot3 = Bot3(
                 all_words=all_words, 
@@ -246,14 +229,9 @@ if __name__ == "__main__":
             print(f"Failed to initialize Bot3: {e}")
             bot3 = None
         
-        # 6. Run the scenario benchmarks safely
-        print("\n" + "="*60)
-        print("         STARTING ALL-BOT COMPARISON BENCHMARK")
-        print("="*60)
-        
-        if bot1:
-            run_scenario_benchmarks(bot1, all_words)
-        if bot2:
-            run_scenario_benchmarks(bot2, all_words)
+        # 4. Run the scenario benchmarks safely for Bot 3
         if bot3:
+            print("\n" + "="*60)
+            print("         STARTING BOT 3 SCENARIO BENCHMARK")
+            print("="*60)
             run_scenario_benchmarks(bot3, all_words)

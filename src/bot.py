@@ -143,108 +143,39 @@ class Bot2:
 
 class Bot3:
     def __init__(self, all_words: list, priors_path: str, feedback_matrix: np.ndarray, guess_to_idx: dict, target_to_idx: dict):
+        self.name = "Bot 3 (2-Turn Lookahead)"
         self.all_words = all_words
-        self.priors = self._load_priors(priors_path)
-        self.name = "Bot 3 (Expected Guesses Lookahead)"
-        
-        # Connect to the GameEngine's performance maps
         self.matrix = feedback_matrix
         self.guess_to_idx = guess_to_idx
         self.target_to_idx = target_to_idx
         
-        # State tracking variable required by the simulator
-        self.active_targets = []
-
-    def _load_priors(self, path: str) -> dict:
-        """Loads priors, converting 0.0 to a tiny probability to avoid math errors."""
-        df = pd.read_csv(path)
-        priors = {}
-        for _, row in df.iterrows():
-            word = str(row['word']).strip().lower()
-            prior = float(row['prior'])
-            priors[word] = prior if prior > 0.0 else 1e-10
-        return priors
-
-    def get_top_guesses(self, candidates: list, top_n: int = 4) -> list:
-        """
-        Evaluates words based on their Expected Score (total turns to win).
-        LOWER expected score is better.
-        """
-        total_prior = sum(self.priors.get(word, 1e-10) for word in candidates)
-        if total_prior == 0:
-            return []
-            
-        normalized_priors = {word: (self.priors.get(word, 1e-10) / total_prior) for word in candidates}
-        scored_guesses = []
+        # Create an inverse mapping to easily look up strings from indices
+        self.idx_to_guess = {v: k for k, v in self.guess_to_idx.items()}
         
-        # Pre-map the candidate words to their integer target indices to avoid dict lookups in the loop
-        cand_zip = [(word, self.target_to_idx[word]) for word in candidates if word in self.target_to_idx]
+        # 1. Load Priors (FIXED: Removed header=None so column headers are safely consumed)
+        df_priors = pd.read_csv(priors_path)
+        self.priors = dict(zip(
+            df_priors.iloc[:, 0].astype(str).str.strip().str.lower(), 
+            df_priors.iloc[:, 1].astype(float)
+        ))
         
-        for guess in self.all_words:
-            g_idx = self.guess_to_idx[guess]
-            matrix_row = self.matrix[g_idx]  # Extract row once per guess for maximum speed
-            pattern_groups = defaultdict(list)
-            
-            # Group remaining candidates using our fast precomputed matrix codes
-            for target, t_idx in cand_zip:
-                pattern = matrix_row[t_idx]
-                pattern_groups[pattern].append(target)
-                
-            expected_remaining_guesses = 0.0
-            win_prob = 0.0
-            
-            for pattern, group in pattern_groups.items():
-                prob_pattern = sum(normalized_priors[t] for t in group)
-                
-                # THE FIX: Only compare against integer 242. 
-                # This avoids triggering NumPy's element-wise array broadcasting error.
-                if pattern == 242:
-                    win_prob = prob_pattern
-                    continue
-                    
-                n = len(group)
-                if n == 1:
-                    expected_remaining_guesses += prob_pattern * 1.0
-                elif n == 2:
-                    p1 = normalized_priors[group[0]]
-                    p2 = normalized_priors[group[1]]
-                    p_max = max(p1, p2)
-                    p_min = min(p1, p2)
-                    exp_bin = 1.0 + (p_min / (p_max + p_min))
-                    expected_remaining_guesses += prob_pattern * exp_bin
-                else:
-                    entropy = 0.0
-                    for t in group:
-                        p_t = normalized_priors[t] / prob_pattern
-                        if p_t > 0:
-                            entropy -= p_t * math.log2(p_t)
-                            
-                    exp_bin = 1.0 + (entropy * 0.45)
-                    expected_remaining_guesses += prob_pattern * exp_bin
-                    
-            expected_score = 1.0 + expected_remaining_guesses
-            is_plausible = self.priors.get(guess, 1e-10) > 1e-9
-            
-            scored_guesses.append({
-                'word': guess,
-                'expected_score': expected_score,
-                'win_prob': win_prob,
-                'is_plausible': is_plausible
-            })
-            
-        scored_guesses.sort(key=lambda x: (not x['is_plausible'], x['expected_score']))
-        return scored_guesses[:top_n]
-    
-    def make_guess(self, candidates: list) -> str:
-        """Standard method for normal simulator gameplay."""
-        top_guesses = self.get_top_guesses(candidates, top_n=1)
-        return top_guesses[0]['word'] if top_guesses else candidates[0]
+        # 2. Enforce structural constraint: Only allow words with non-zero priors as valid suggestions
+        self.valid_guesses = [w for w in self.all_words if self.priors.get(w, 0) > 1e-9]
+        self.valid_guess_idxs = np.array([self.guess_to_idx[w] for w in self.valid_guesses if w in self.guess_to_idx])
+        
+        # 3. Precompute target weight arrays for accelerated NumPy lookups
+        max_target_idx = max(self.target_to_idx.values())
+        self.prior_weights_target = np.zeros(max_target_idx + 1)
+        for w, p in self.priors.items():
+            if w in self.target_to_idx:
+                self.prior_weights_target[self.target_to_idx[w]] = p
 
-    # --- SIMULATOR COMPATIBILITY INTERFACE ---
+        self.reset()
 
     def reset(self):
         """Called at the start of every game to clear out the target candidate pool."""
         self.active_targets = [w for w in self.all_words if self.priors.get(w, 0) > 1e-9]
+        self.turn_count = 1
 
     def update_state(self, guess_idx: int, feedback: int):
         """Filters the active target candidate list down using the matrix row."""
@@ -252,15 +183,219 @@ class Bot3:
             t for t in self.active_targets 
             if self.matrix[guess_idx, self.target_to_idx[t]] == feedback
         ]
+        self.turn_count += 1
 
     def get_best_guess(self) -> int:
         """Called by the game simulator loop to return the chosen guess's integer index."""
-        if len(self.active_targets) > 2000:
-            return self.guess_to_idx.get("salet", self.guess_to_idx.get("slate", 0))
+        # Hardcode optimal opener on Turn 1 to bypass the 30-million operation startup phase
+        if self.turn_count == 1:
+            return self.guess_to_idx.get("slate", 0)
             
         best_word = self.make_guess(self.active_targets)
         return self.guess_to_idx[best_word]
 
+    def make_guess(self, active_targets: list) -> str:
+        if len(active_targets) == 1:
+            return active_targets[0]
+        if len(active_targets) == 2:
+            return max(active_targets, key=lambda w: self.priors.get(w, 0))
+            
+        active_t_idxs = np.array([self.target_to_idx[t] for t in active_targets])
+        weights = self.prior_weights_target[active_t_idxs]
+        total_weight = np.sum(weights)
+        
+        # ---------------------------------------------------------------------
+        # STEP 1: Fast 1-Turn Lookahead Filtering
+        # ---------------------------------------------------------------------
+        V = len(self.valid_guess_idxs)
+        row_indices_full = np.arange(V)[:, None]
+        full_sub_matrix = self.matrix[self.valid_guess_idxs][:, active_t_idxs]
+        
+        weights_m1 = np.zeros((V, 243))
+        np.add.at(weights_m1, (row_indices_full, full_sub_matrix), weights)
+        
+        p_m1 = weights_m1 / (total_weight + 1e-12)
+        entropy_g1 = -np.sum(p_m1 * np.log2(p_m1 + 1e-12), axis=1)
+        
+        # INCLUSION FIX: Entropy favors burn words. To find words with Exp. Score < 3.0, 
+        # we must explicitly include the most probable actual remaining targets in the deep search.
+        top_entropy_indices = np.argsort(entropy_g1)[::-1][:30]
+        top_prob_targets = active_t_idxs[np.argsort(weights)[::-1][:30]]
+        active_in_valid_indices = np.where(np.isin(self.valid_guess_idxs, top_prob_targets))[0]
+        
+        eval_indices = np.unique(np.concatenate((top_entropy_indices, active_in_valid_indices)))
+        
+        # ---------------------------------------------------------------------
+        # STEP 2: Deep 2-Turn Lookahead
+        # ---------------------------------------------------------------------
+        best_g1_word = None
+        min_expected_turns = float('inf')
+        inner_row_indices = np.arange(V)[:, None]
+        
+        for idx in eval_indices:
+            g1_idx = self.valid_guess_idxs[idx]
+            g1_word = self.idx_to_guess[g1_idx]
+            
+            feedbacks_1 = self.matrix[g1_idx, active_t_idxs]
+            unique_f1 = np.unique(feedbacks_1)
+            
+            expected_turns_g1 = 0.0
+            
+            for f1 in unique_f1:
+                mask = (feedbacks_1 == f1)
+                bucket_t_idxs = active_t_idxs[mask]
+                bucket_weights = weights[mask]
+                bucket_weight_sum = np.sum(bucket_weights)
+                p_bucket = bucket_weight_sum / total_weight
+                
+                if p_bucket < 1e-12:
+                    continue
+                
+                if f1 == 242:
+                    turns_needed = 0.0
+                elif len(bucket_t_idxs) == 1:
+                    turns_needed = 1.0
+                elif len(bucket_t_idxs) == 2:
+                    w_max = np.max(bucket_weights)
+                    w_min = np.min(bucket_weights)
+                    turns_needed = 1.0 * (w_max / bucket_weight_sum) + 2.0 * (w_min / bucket_weight_sum)
+                else:
+                    sub_matrix = self.matrix[self.valid_guess_idxs][:, bucket_t_idxs]
+                    
+                    weights_matrix = np.zeros((V, 243))
+                    counts_matrix = np.zeros((V, 243), dtype=int)
+                    w_log_w = bucket_weights * np.log2(bucket_weights + 1e-12)
+                    w_log_w_matrix = np.zeros((V, 243))
+                    
+                    np.add.at(weights_matrix, (inner_row_indices, sub_matrix), bucket_weights)
+                    np.add.at(counts_matrix, (inner_row_indices, sub_matrix), 1)
+                    np.add.at(w_log_w_matrix, (inner_row_indices, sub_matrix), w_log_w)
+                    
+                    safe_weights = weights_matrix + 1e-12
+                    entropy_matrix = np.clip(np.log2(safe_weights) - (w_log_w_matrix / safe_weights), 0, None)
+                    
+                    cost_matrix = 1.0 + (entropy_matrix * 0.45)
+                    cost_matrix[counts_matrix == 1] = 1.0
+                    cost_matrix[:, 242] = 0.0
+                    cost_matrix[counts_matrix == 0] = 0.0
+                    
+                    p_sub = weights_matrix / bucket_weight_sum
+                    expected_after_g3 = np.sum(p_sub * cost_matrix, axis=1)
+                    turns_needed = np.min(1.0 + expected_after_g3)
+                
+                expected_turns_g1 += p_bucket * turns_needed
+                
+            total_expected_score = 2.0 + expected_turns_g1
+            
+            if total_expected_score < min_expected_turns:
+                min_expected_turns = total_expected_score
+                best_g1_word = g1_word
+                
+        return best_g1_word
+
+    def get_top_guesses(self, candidates: list, top_n: int = 4) -> list:
+        if len(candidates) == 0:
+            return []
+        if len(candidates) == 1:
+            return [{"word": candidates[0], "skill": 99, "expected_score": 2.0}]
+            
+        active_t_idxs = np.array([self.target_to_idx[c] for c in candidates if c in self.target_to_idx])
+        if len(active_t_idxs) == 0:
+            return []
+            
+        weights = self.prior_weights_target[active_t_idxs]
+        total_weight = np.sum(weights) if np.sum(weights) > 0 else 1.0
+        
+        V = len(self.valid_guess_idxs)
+        row_indices_full = np.arange(V)[:, None]
+        full_sub_matrix = self.matrix[self.valid_guess_idxs][:, active_t_idxs]
+        
+        weights_m1 = np.zeros((V, 243))
+        np.add.at(weights_m1, (row_indices_full, full_sub_matrix), weights)
+        
+        p_m1 = weights_m1 / (total_weight + 1e-12)
+        entropy_g1 = -np.sum(p_m1 * np.log2(p_m1 + 1e-12), axis=1)
+        
+        top_entropy_indices = np.argsort(entropy_g1)[::-1][:30]
+        top_prob_targets = active_t_idxs[np.argsort(weights)[::-1][:30]]
+        active_in_valid_indices = np.where(np.isin(self.valid_guess_idxs, top_prob_targets))[0]
+        
+        eval_indices = np.unique(np.concatenate((top_entropy_indices, active_in_valid_indices)))
+        
+        scored_guesses = []
+        inner_row_indices = np.arange(V)[:, None]
+        
+        for idx in eval_indices:
+            g1_idx = self.valid_guess_idxs[idx]
+            word = self.idx_to_guess[g1_idx]
+            
+            feedbacks_1 = self.matrix[g1_idx, active_t_idxs]
+            unique_f1 = np.unique(feedbacks_1)
+            
+            expected_turns_g1 = 0.0
+            
+            for f1 in unique_f1:
+                mask = (feedbacks_1 == f1)
+                bucket_t_idxs = active_t_idxs[mask]
+                bucket_weights = weights[mask]
+                bucket_weight_sum = np.sum(bucket_weights)
+                p_bucket = bucket_weight_sum / total_weight
+                
+                if p_bucket < 1e-12:
+                    continue
+                
+                if f1 == 242:
+                    turns_needed = 0.0
+                elif len(bucket_t_idxs) == 1:
+                    turns_needed = 1.0
+                elif len(bucket_t_idxs) == 2:
+                    w_max = np.max(bucket_weights)
+                    w_min = np.min(bucket_weights)
+                    turns_needed = 1.0 * (w_max / bucket_weight_sum) + 2.0 * (w_min / bucket_weight_sum)
+                else:
+                    sub_matrix = self.matrix[self.valid_guess_idxs][:, bucket_t_idxs]
+                    
+                    weights_matrix = np.zeros((V, 243))
+                    counts_matrix = np.zeros((V, 243), dtype=int)
+                    w_log_w = bucket_weights * np.log2(bucket_weights + 1e-12)
+                    w_log_w_matrix = np.zeros((V, 243))
+                    
+                    np.add.at(weights_matrix, (inner_row_indices, sub_matrix), bucket_weights)
+                    np.add.at(counts_matrix, (inner_row_indices, sub_matrix), 1)
+                    np.add.at(w_log_w_matrix, (inner_row_indices, sub_matrix), w_log_w)
+                    
+                    safe_weights = weights_matrix + 1e-12
+                    entropy_matrix = np.clip(np.log2(safe_weights) - (w_log_w_matrix / safe_weights), 0, None)
+                    
+                    cost_matrix = 1.0 + (entropy_matrix * 0.45)
+                    cost_matrix[counts_matrix == 1] = 1.0
+                    cost_matrix[:, 242] = 0.0
+                    cost_matrix[counts_matrix == 0] = 0.0
+                    
+                    p_sub = weights_matrix / bucket_weight_sum
+                    expected_after_g3 = np.sum(p_sub * cost_matrix, axis=1)
+                    turns_needed = np.min(1.0 + expected_after_g3)
+                
+                expected_turns_g1 += p_bucket * turns_needed
+                
+            total_expected_score = 2.0 + expected_turns_g1
+            
+            scored_guesses.append({
+                "word": word,
+                "expected_score": float(total_expected_score)
+            })
+            
+        scored_guesses.sort(key=lambda x: x["expected_score"])
+        
+        # FIXED: NYT 99-minus Skill System (-1 skill per 0.01 expected score drop)
+        if scored_guesses:
+            best_score = scored_guesses[0]["expected_score"]
+            for g in scored_guesses:
+                penalty = int(round((g["expected_score"] - best_score) * 100))
+                g["skill"] = max(0, 99 - penalty)
+                
+        return scored_guesses[:top_n]
+    
 def get_feedback(guess: str, target: str) -> tuple:
     """
     Standard feedback calculator.

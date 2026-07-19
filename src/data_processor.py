@@ -64,8 +64,8 @@ def process_original_nyt_data():
     Processes the original NYT unprocessed data using strict TSV parsing.
     Extracts 'prior' and 'expectedAdditionalGuesses'.
     """
-    input_path = DATA_DIR / 'unprocessed_word_data.txt'
-    output_path = DATA_DIR / 'cleaned_priors.csv'
+    input_path = DATA_DIR / 'unprocessed_word_data_2.txt'
+    output_path = DATA_DIR / 'unseen_cleaned_priors.csv'
     
     print(f"Processing original NYT data from {input_path}...")
     
@@ -119,5 +119,5 @@ def process_original_nyt_data():
 if __name__ == "__main__":
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     
-    process_wordletools_data()
+    #process_wordletools_data()
     process_original_nyt_data()
