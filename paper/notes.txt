@@ -106,3 +106,65 @@ NYT vs Bot 3 (Unseen)
 
 Bot 3 always offered a lower or equal expected guess value. This implies our bot's heuristics may be too optimistic.
 This is because we'd expect it to have a higher expected guess value than NYT's bot because it can only guess from a smaller range of words.
+
+My initial attempt to get a 4500 word list involved using python's wordfreq.
+However, some of the words in the 3200 word list weren't even present in its corpus, making it insuitable for the analysis we need.
+I tried multiple sources, including Peter Norvig's data, google Ngram and even a naturalness metric to estimate the likelihood of words being guessed.
+However, there would still be hundereds of words in the 3200 not making the top 4500 most frequent words.
+Hence I resorted to testing various combinations of the sources until it most accurately represented the frequencies NYT seem to use.
+However, this was a struggle as any method which caught most of the 3200 demonstrated severe overfitting.
+I even attempted to use vector embeddings to capture the "old words" in the priors list.
+
+Eventually I managed these results by weighting across 10 different frequency sources:
+
+Training Advanced Structural Logistic Regression...
+Running 5-Fold Cross-Validation to verify generalization...
+
+=== CROSS-VALIDATION RESULTS ===
+Original Training Missed Targets  : 160
+Out-Of-Fold (Blind) Missed Targets: 161
+-------------------------------------------------------------
+
+=== ALL BLIND (OOF) MISSED TARGET WORDS (161 TOTAL) ===
+ word  oof_rank  oof_probability  unseen_prior
+judgy      4521         0.335772      0.854802
+popup      4522         0.335444      0.957972
+wader      4523         0.335349      0.721877
+schwa      4528         0.333808      0.750523
+fusty      4532         0.333371      1.000000
+cutup      4582         0.323132      0.985562
+melty      4593         0.321206      0.950780
+ambit      4604         0.319365      0.973035
+datum      4605         0.319076      0.916618
+spiff      4606         0.318995      0.943035
+nabob      4608         0.317985      0.835053
+doula      4614         0.316211      0.985695
+reran      4619         0.315027      0.911774
+naggy      4632         0.312652      0.638004
+umbra      4634         0.312404      0.885892
+...
+retag     10906         0.013486      0.031973
+corps     11012         0.013309      1.000000
+trans     11423         0.005372      1.000000
+feces     11910         0.001208      0.964314
+
+This is good but the variety in priors that were cut off indicates I'm still not accurately replicating NYT's selection process.
+Hence I pivoted to trying to replicate the priors, taking into account the penalties for past tense words and plurals.
+To prevent overfitting I made a model which worked only on frequency and then applied word type alterations, just like the real list.
+I got the following results:
+
+=== REVERSE ENGINEERING METRICS ===
+Total True NYT Targets:       3209
+Total Predicted Solutions:    3412
+Targets Successfully Captured:2785 (86.8%)
+Missed Targets:               424
+
+=== PRIORS BREAKDOWN ===
+High-Prior Targets Captured: 2066 / 2110 (97.9%)
+Low-Prior Targets Captured:  719 / 1099 (65.4%)
+Valid '-ed' Targets Captured: 200 / 258 (77.5%)
+
+This is good, a high result in the low-prior category would imply overfitting.
+I then made the 4500 word list by taking the 3209 and adding the most common 1291 words according to the model.
+I gave the additional words the same prior score as the penalised -ed words.
+I then rerun bot 3 but with this 4500 word list to see how close it came to NYT's WordleBot:
