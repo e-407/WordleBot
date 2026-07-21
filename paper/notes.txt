@@ -168,3 +168,102 @@ This is good, a high result in the low-prior category would imply overfitting.
 I then made the 4500 word list by taking the 3209 and adding the most common 1291 words according to the model.
 I gave the additional words the same prior score as the penalised -ed words.
 I then rerun bot 3 but with this 4500 word list to see how close it came to NYT's WordleBot:
+
+The refined Bot 3 using the unseen priors gave:
+18/7/26 - BRINY 99, IRONY 94, RHINO 92, FORUM 91
+17/7/26 - RANGY 99, RANDY 91, GERMY 89, NERDY 89
+16/7/26 - TURBO 99, TOURS 92, TROUT 92, TUTOR 92
+15/7/26 - OASIS 99, BASIN 98, BASIS 97, AMISS 94
+14/7/26 - MIKED 99, MOWED 99, STEAD 99, MEWED 99
+
+Again, similarities to the bot but actual performance differences can't be seen here.
+Before bulk testing I decided to optimise Bot 3 further and add some speed tests as performance is currently slow.
+I suspect NYT's WordleBot runs using a precomputed decision tree, which is infeasible for me to compute.
+Before further optimisations the speed tests gave:
+
+Turn 1: SLATE (Hardcoded -> 0.00 ms)
+
+[1/7] Evaluating 'irony' (Pool: 356 words)... Single: 104.66s | Top 10: 99.44s | Best: crony
+[2/7] Evaluating 'rangy' (Pool: 244 words)... Single: 72.46s | Top 10: 76.02s | Best: corny
+[3/7] Evaluating 'turbo' (Pool: 112 words)... Single: 47.22s | Top 10: 54.10s | Best: count
+[4/7] Evaluating 'pansy' (Pool: 92 words)... Single: 26.53s | Top 10: 25.10s | Best: oasis
+[5/7] Evaluating 'steak' (Pool: 5 words)... Single: 0.15s | Top 10: 0.14s | Best: mewed
+[6/7] Evaluating 'crimp' (Pool: 356 words)... Single: 105.28s | Top 10: 104.30s | Best: crony
+[7/7] Evaluating 'flock' (Pool: 50 words)... Single: 20.24s | Top 10: 20.82s | Best: bipod
+
+==========================================================================================
+Target  Pool Size Best Guess  Single Guess (s)  Top 10 List (s)            Top Suggestions Preview
+ irony        356      crony            104.66            99.44 crony (99), bring (98), bronc (98)
+ rangy        244      corny             72.46            76.02 corny (99), carom (99), carny (97)
+ turbo        112      count             47.22            54.10 count (99), churn (98), chino (97)
+ pansy         92      oasis             26.53            25.10 oasis (99), basin (98), basis (97)
+ steak          5      mewed              0.15             0.14 mewed (99), miked (99), mowed (99)
+ crimp        356      crony            105.28           104.30 crony (99), bring (98), bronc (98)
+ flock         50      bipod             20.24            20.82 bipod (99), flunk (96), pubic (95)
+==========================================================================================
+
+### Performance Summary:
+* **Average Time for Single Best Guess (Playing):**   53.79 seconds
+* **Average Time for Top 10 Ranked List (Analyzing):** 54.27 seconds
+
+After optimisations such as alpha pruning and best-first search, and dynamically choosing the amount of words to evaluate at each turn:
+
+Turn 1: SLATE (Hardcoded -> 0.00 ms)
+
+[1/7] Evaluating 'irony' (Pool: 356 words)... Single: 54.19s | Top 10: 57.35s | Best: crony
+[2/7] Evaluating 'rangy' (Pool: 244 words)... Single: 34.26s | Top 10: 36.94s | Best: corny
+[3/7] Evaluating 'turbo' (Pool: 112 words)... Single: 21.49s | Top 10: 22.25s | Best: count
+[4/7] Evaluating 'pansy' (Pool: 92 words)... Single: 16.54s | Top 10: 19.79s | Best: oasis
+[5/7] Evaluating 'steak' (Pool: 5 words)... Single: 0.15s | Top 10: 0.14s | Best: waked
+[6/7] Evaluating 'crimp' (Pool: 356 words)... Single: 47.81s | Top 10: 50.56s | Best: crony
+[7/7] Evaluating 'flock' (Pool: 50 words)... Single: 14.81s | Top 10: 15.36s | Best: bipod
+
+==========================================================================================
+Target  Pool Size Best Guess  Single Guess (s)  Top 10 List (s)            Top Suggestions Preview
+ irony        356      crony             54.19            57.35 crony (99), bring (98), bronc (98)
+ rangy        244      corny             34.26            36.94 corny (99), carom (99), carny (97)
+ turbo        112      count             21.49            22.25 count (99), churn (98), chino (97)
+ pansy         92      oasis             16.54            19.79 oasis (99), basin (98), basis (97)
+ steak          5      waked              0.15             0.14 waked (99), miked (99), mewed (99)
+ crimp        356      crony             47.81            50.56 crony (99), bring (98), bronc (98)
+ flock         50      bipod             14.81            15.36 bipod (99), flunk (96), pubic (95)
+==========================================================================================
+
+### Performance Summary:
+* **Average Time for Single Best Guess (Playing):**   27.04 seconds
+* **Average Time for Top 10 Ranked List (Analyzing):** 28.91 seconds
+==========================================================================================
+
+The main performance bottleneck is the second turn - it is slow to evaluate but actually easy to cache as there can only be at most 243 possible situations.
+However, before computing all these second turn words I wanted to further ensure that my clone behaved like NYT's.
+Hence I made a test set of 20 words, which each respond differently to SLATE as the second guess is where the "intelligence" of the bot lies.
+I also chose them from the most likely repsonses to SLATE, and chose the words using the priors we computed from the 4500 word list.
+
+================================================================
+            TOP 20 MOST LIKELY BUCKETS AFTER 'SLATE'
+================================================================
+Rank  Pattern      Code   Pool Size   Prob (%)   Sample Target  
+----------------------------------------------------------------
+1.    ⬛⬛⬛⬛⬛  0      1059        10.60%     frown          
+2.    ⬛⬛⬛⬛🟨  1      942         7.83%      weigh          
+3.    ⬛⬛🟨⬛⬛  9      1101        6.67%      march          
+4.    ⬛⬛⬛⬛🟩  2      506         4.12%      piece          
+5.    ⬛🟨⬛⬛⬛  27     325         3.59%      knoll          
+6.    ⬛⬛⬛🟨⬛  3      302         3.48%      third          
+7.    ⬛⬛⬛🟨🟨  4      299         3.37%      deter          
+8.    ⬛⬛🟨⬛🟨  10     433         3.06%      adder          
+9.    ⬛🟨⬛⬛🟨  28     283         2.66%      liner          
+10.   ⬛🟨🟨⬛⬛  36     399         2.48%      cavil          
+11.   🟩⬛⬛⬛⬛  162    287         2.41%      sworn          
+12.   ⬛⬛🟨🟨⬛  12     240         2.10%      taunt          
+13.   🟨⬛⬛⬛⬛  81     938         2.05%      bison          
+14.   ⬛⬛🟩⬛⬛  18     219         2.02%      drama          
+15.   ⬛🟩⬛⬛⬛  54     94          1.71%      plumb          
+16.   🟩⬛⬛🟨⬛  165    107         1.47%      story          
+17.   ⬛⬛⬛🟩⬛  6      150         1.45%      booth          
+18.   ⬛⬛🟨⬛🟩  11     197         1.28%      vague          
+19.   🟩⬛⬛⬛🟩  164    83          1.23%      singe          
+20.   ⬛🟨🟨⬛🟨  37     128         1.21%      baler          
+================================================================
+
+

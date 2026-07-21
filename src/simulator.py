@@ -4,8 +4,10 @@ import time
 from pathlib import Path
 
 from engine import GameEngine
-# REMOVED: BaseBot from imports
-from bot import Bot1, Bot2, Bot3, get_feedback 
+from base_bot import get_feedback
+from bot1 import Bot1
+from bot2 import Bot2
+from bot3 import Bot3
 
 class Simulator:
     # CHANGED: Replaced 'bot: BaseBot' with generic type-hinting to support duck-typing
@@ -148,21 +150,18 @@ def format_feedback(feedback_tuple: tuple) -> str:
     return "".join(mapping[val] for val in feedback_tuple)
 
 def run_scenario_benchmarks(bot, all_words: list):
-    """
-    Runs a standardized set of test scenarios on a given bot to evaluate its 
-    internal ranking and lookahead metrics.
-    """
-    # CHANGED: Fallback gracefully if a bot doesn't have an explicit self.name
     bot_name = getattr(bot, 'name', bot.__class__.__name__)
     print(f"\n{'='*60}")
     print(f"RUNNING SCENARIO BENCHMARKS FOR: {bot_name}")
     print(f"{'='*60}")
     
-    # CHANGED: Avoid crashing if a bot (like Bot1) does not implement lookahead rankings
     if not hasattr(bot, 'get_top_guesses'):
         print(f"Skipping scenario benchmarking: {bot_name} does not implement 'get_top_guesses'.")
         print(f"{'='*60}\n")
         return
+    
+    # FIX: Restrict candidate pool to valid targets with non-zero priors
+    valid_targets = getattr(bot, 'valid_guesses', all_words)
     
     scenarios = [
         ("Green T", (0, 0, 0, 2, 0)),
@@ -178,15 +177,14 @@ def run_scenario_benchmarks(bot, all_words: list):
         print(f"\nScenario: {desc}")
         print(f"Initial: {initial_guess.upper()} -> {format_feedback(feedback)}")
         
-        # Determine remaining candidates
-        candidates = [w for w in all_words if get_feedback(initial_guess, w) == feedback]
+        # Filter from valid_targets instead of all_words
+        candidates = [w for w in valid_targets if get_feedback(initial_guess, w) == feedback]
         print(f"Remaining Candidates: {len(candidates)}")
         
         if not candidates:
             print("No valid candidates left. Skipping.")
             continue
             
-        # Fetch rankings from the bot
         top_guesses = bot.get_top_guesses(candidates, top_n=4)
         
         for i, g in enumerate(top_guesses, 1):
@@ -203,8 +201,8 @@ def run_scenario_benchmarks(bot, all_words: list):
 if __name__ == "__main__":
     # 1. Resolve paths dynamically based on the script's location
     BASE_DIR = Path(__file__).resolve().parent.parent
-    WORDS_FILE = BASE_DIR / 'data' / 'allowed_guesses.csv'
-    PRIORS_FILE = BASE_DIR / 'data' / 'unseen_cleaned_priors.csv'
+    WORDS_FILE = BASE_DIR / 'data' / 'wordle_4500_guesses.csv'
+    PRIORS_FILE = BASE_DIR / 'data' / 'priors_4500.csv'
     
     if not WORDS_FILE.exists() or not PRIORS_FILE.exists():
         print(f"Error: Missing required files.\nEnsure they exist at:\n- {WORDS_FILE}\n- {PRIORS_FILE}")

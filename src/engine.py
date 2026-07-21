@@ -67,3 +67,22 @@ class GameEngine:
         """Evaluates a guess directly using its precomputed matrix index."""
         self.turns_taken += 1
         return self.feedback_matrix[guess_idx, self.target_idx]
+    
+    def pattern_to_code(self, pattern: str) -> int:
+        """Converts a 5-character string ('YBBGY') to a matrix integer (0-242)."""
+        mapping = {'B': 0, 'Y': 1, 'G': 2, '⬛': 0, '🟨': 1, '🟩': 2}
+        code = 0
+        for i, char in enumerate(pattern):
+            code += mapping.get(char, 0) * (3 ** (4 - i))
+        return int(code)
+
+    def code_to_pattern(self, code: int) -> str:
+        """Converts a matrix integer (0-242) back to a 5-character string."""
+        mapping = {0: 'B', 1: 'Y', 2: 'G'}
+        pattern = ""
+        for i in range(4, -1, -1):
+            div = 3 ** i
+            val = code // div
+            code %= div
+            pattern += mapping[val]
+        return pattern
