@@ -11,8 +11,8 @@ if str(SRC_DIR) not in sys.path:
 from engine import GameEngine
 
 # Toggle which bot you are testing here:
-from bot2 import Bot2 as ActiveBot
-# from bot3 import Bot3 as ActiveBot
+# from bot2 import Bot2 as ActiveBot
+from bot3 import Bot3 as ActiveBot
 
 def run_15k_evaluation():
     print("Initializing Engine...")
@@ -45,7 +45,7 @@ def run_15k_evaluation():
     
     results = []
     start_time = time.time()
-    progress_points = {1, 5, 10, 25, 50, 100, 250, 500}
+    progress_points = {1, 5, 10, 25, 50, 100, 250, 750, 1250, 1750}
     
     print(f"\nStarting evaluation on {total_games} words...\n" + "-" * 75)
     
@@ -80,7 +80,7 @@ def run_15k_evaluation():
         })
         
         # Log Progress
-        if game_idx in progress_points or (game_idx >= 1000 and game_idx % 1000 == 0):
+        if game_idx in progress_points or (game_idx % 500 == 0):
             elapsed = time.time() - start_time
             print(f"[{game_idx:>5}/{total_games}] Evaluated  |  T2 Cache: {len(bot.turn2_cache):>3}  |  Mid Cache: {len(bot.mid_game_cache):>4}  |  Time: {elapsed/60:.2f} min")
 

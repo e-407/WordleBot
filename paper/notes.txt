@@ -67,7 +67,7 @@ After refining Bot 3 to use expected guesses with a two-turn lookahead (and then
 15/7/26 - PANSY 99, RAINY 98, BRINY 98, BASIN 94
 14/7/26 - STEAK 99, STEAD 99, MEWED 75, MIKED 75
 
-This is now extremely close to WordleBot's suggestions. At the moment the bot looks at the 30 candidates with highest entropy, and the 30 most probable solutions.
+This is now extremely close to WordleBot's suggestions. At the moment the bot looks at the 50 candidates with highest entropy or most probable solutions.
 However, it still only guesses words with non-zero priors. Hence we'll try to recreate WordleBot's 4500 word guess list.
 
 In my search to find the 4500 word list, I stumbled upon the list of priors for the version of WordleBot which doesn't take past solutions into account.
@@ -330,9 +330,9 @@ For thoroughness, I also ran the averages for each list of words we have:
 
 --- BOT SUMMARY AVERAGES ---
 Dataset                          Count Unweighted Avg Weighted Avg
-All 15k Words (Full Dictionary) 14855  4.6328            N/A      
+All 15k Words (Full Dictionary) 14855  4.5435            N/A      
                 Top 4,500 Words  4500  3.7962         3.5300      
- NYT Target List (~3,200 Words)  3209  3.6201         3.5288    
+ NYT Target List (~3,200 Words)  3209  3.6201         3.5288   
 
 The high average for the 15k is because the bot ignores all words outside the 4500 until it's otherwise impossible, leading to a spike in average guesses.
 As it turns out, every single Wordle solution has been in the 3209 word list:
@@ -359,7 +359,7 @@ I ran the full benchmarks on Bot 2 as well (after making it use the priors we cr
 
 --- BOT 2 SUMMARY AVERAGES ---
 Dataset                          Count Unweighted Avg Weighted Avg
-All 15k Words (Full Dictionary) 14855  4.6323            N/A      
+All 15k Words (Full Dictionary) 14855  4.5746            N/A      
                 Top 4,500 Words  4500  3.8082         3.6525      
    NYT Target List (3209 Words)  3209  3.7102         3.6518      
   
@@ -375,3 +375,4 @@ Original Era (Games 0-479) 480          3.6187      100.00%  5
 Overall Past Solutions Avg:      3.6153
 Overall Past Solutions Win Rate: 100.00%
 
+As expected, slightly worse than Bot 3 on the past solutions.

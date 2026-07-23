@@ -65,15 +65,46 @@ class Bot3(BaseBot):
             with open(self.turn2_cache_path, 'w') as f:
                 json.dump(self.turn2_cache, f, indent=2)
 
+    def _get_fallback_guess(self, active_targets_15k: list) -> str:
+        """Memory-safe 1-turn entropy calculation for obscure words outside the 4500 list."""
+        if len(active_targets_15k) == 1:
+            return active_targets_15k[0]
+        if len(active_targets_15k) == 2:
+            return active_targets_15k[0]
+            
+        active_t_idxs = np.array([self.target_to_idx[t] for t in active_targets_15k], dtype=np.int32)
+        V = self.matrix.shape[0] # Total number of words in full dictionary
+        
+        # Vectorized memory-safe feedback counts
+        counts = np.zeros((V, 243), dtype=np.float32)
+        row_indices = np.arange(V)[:, None]
+        
+        # Evaluate all dictionary words against the small remaining 15k pool
+        sub_matrix = self.matrix[:, active_t_idxs]
+        np.add.at(counts, (row_indices, sub_matrix), 1.0)
+        
+        p = counts / len(active_t_idxs)
+        entropy = -np.sum(p * np.log2(p + 1e-12), axis=1)
+        
+        max_ent = np.max(entropy)
+        best_guesses = np.where(entropy >= max_ent - 1e-5)[0]
+        
+        # Tie-breaker: If an optimal entropy guess is also a possible target, play it
+        for g_idx in best_guesses:
+            if g_idx in active_t_idxs:
+                return self.idx_to_guess[g_idx]
+                
+        return self.idx_to_guess[best_guesses[0]]
+
     def get_best_guess(self) -> int:
         if self.turn_count == 1:
             return self.guess_to_idx.get("slate", 0)
             
         best_word = None
         
-        # 1. 15k FALLBACK: If no common words remain, bypass matrix/caches entirely
+        # 1. 15k FALLBACK: If no common words remain, use memory-safe entropy on full list
         if len(self.active_targets) == 0:
-            best_word = self.active_targets_15k[0]
+            best_word = self._get_fallback_guess(self.active_targets_15k)
             
         # 2. TURN 2: Disk Cached
         elif self.turn_count == 2:

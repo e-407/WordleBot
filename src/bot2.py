@@ -10,15 +10,24 @@ class Bot2(BaseBot):
         self.name = "Bot 2 (1-Turn Entropy, Priors)"
         self.idx_to_guess = {v: k for k, v in self.guess_to_idx.items()}
         
+        # --- Robust CSV Prior Loading ---
         df_priors = pd.read_csv(priors_path)
-        self.priors = dict(zip(
-            df_priors.iloc[:, 0].astype(str).str.strip().str.lower(), 
-            df_priors.iloc[:, 1].astype(float)
-        ))
+        # Handle cases where CSV has no header and pandas treats row 0 as column names
+        try:
+            float(df_priors.columns[1])
+            df_priors = pd.read_csv(priors_path, header=None)
+        except ValueError:
+            pass
+            
+        words = df_priors.iloc[:, 0].astype(str).str.strip().str.lower()
+        priors = pd.to_numeric(df_priors.iloc[:, 1], errors='coerce').fillna(0.0)
+        self.priors = dict(zip(words, priors))
         
+        # Plausible guess list based on non-zero priors
         self.valid_guesses = [w for w in self.all_words if self.priors.get(w, 0) > 1e-9]
-        self.valid_guess_idxs = np.array([self.guess_to_idx[w] for w in self.valid_guesses if w in self.guess_to_idx])
+        self.valid_guess_idxs = np.array([self.guess_to_idx[w] for w in self.valid_guesses if w in self.guess_to_idx], dtype=np.int32)
         
+        # Map target priors directly into target matrix column indices
         max_target_idx = max(self.target_to_idx.values())
         self.prior_weights_target = np.zeros(max_target_idx + 1)
         for w, p in self.priors.items():
@@ -32,7 +41,7 @@ class Bot2(BaseBot):
             with open(self.turn2_cache_path, 'r') as f:
                 self.turn2_cache = json.load(f)
                 
-        self.mid_game_cache = {} # In-memory cache persists across games for speed
+        self.mid_game_cache = {} # Persistent in-memory cache
 
         self.reset()
 
@@ -71,9 +80,9 @@ class Bot2(BaseBot):
             
         best_word = None
         
-        # 1. 15k FALLBACK: If no common words remain, bypass matrix/caches entirely
+        # 1. 15k FALLBACK: If target is outside prior list, run entropy on remaining 15k targets
         if len(self.active_targets) == 0:
-            best_word = self.active_targets_15k[0]
+            best_word = self.make_guess(self.active_targets_15k, use_priors=False)
             
         # 2. TURN 2: Disk Cached
         elif self.turn_count == 2:
@@ -81,7 +90,7 @@ class Bot2(BaseBot):
             if f_code_str in self.turn2_cache:
                 best_word = self.turn2_cache[f_code_str]
             else:
-                best_word = self._calculate_guess(self.active_targets)
+                best_word = self.make_guess(self.active_targets, use_priors=True)
                 self.turn2_cache[f_code_str] = best_word
                 self._save_turn2_cache()
                 
@@ -91,10 +100,10 @@ class Bot2(BaseBot):
             if pool_key in self.mid_game_cache:
                 best_word = self.mid_game_cache[pool_key]
             else:
-                best_word = self._calculate_guess(self.active_targets)
+                best_word = self.make_guess(self.active_targets, use_priors=True)
                 self.mid_game_cache[pool_key] = best_word
 
-        # 4. FAILSAFE: Prevent infinite loops naturally
+        # 4. FAILSAFE: Prevent duplicate guesses
         if best_word in self.guesses_made:
             for w in self.active_targets_15k:
                 if w not in self.guesses_made:
@@ -103,27 +112,37 @@ class Bot2(BaseBot):
 
         return self.guess_to_idx[best_word]
 
-    def _calculate_guess(self, active_targets: list) -> str:
+    def make_guess(self, active_targets: list, use_priors: bool = True) -> str:
         if len(active_targets) == 1:
             return active_targets[0]
+            
         if len(active_targets) == 2:
-            return max(active_targets, key=lambda w: self.priors.get(w, 0))
+            if use_priors:
+                return max(active_targets, key=lambda w: self.priors.get(w, 0))
+            return active_targets[0]
 
-        # 1. Force the array to be integers (prevents the float IndexError)
         active_t_idxs = np.array([self.target_to_idx[t] for t in active_targets if t in self.target_to_idx], dtype=np.int32)
         
-        # 2. SAFEGUARD: If none of the remaining words are in the target pool, just pick the best prior
         if len(active_t_idxs) == 0:
-            return max(active_targets, key=lambda w: self.priors.get(w, 0))
+            return active_targets[0]
 
-        weights = self.prior_weights_target[active_t_idxs]
-        total_weight = np.sum(weights)
-        if total_weight < 1e-12:
-            total_weight = 1.0
+        # Determine evaluation pool and probability weights
+        if use_priors:
+            weights = self.prior_weights_target[active_t_idxs]
+            total_weight = np.sum(weights)
+            if total_weight < 1e-12:
+                weights = np.ones(len(active_t_idxs))
+                total_weight = float(len(active_t_idxs))
+            guess_idxs = self.valid_guess_idxs
+        else:
+            # Fallback mode: Equal probability weights across remaining dictionary words
+            weights = np.ones(len(active_t_idxs))
+            total_weight = float(len(active_t_idxs))
+            guess_idxs = np.arange(len(self.all_words), dtype=np.int32)
 
-        V = len(self.valid_guess_idxs)
+        V = len(guess_idxs)
         row_indices_full = np.arange(V)[:, None]
-        full_sub_matrix = self.matrix[self.valid_guess_idxs][:, active_t_idxs]
+        full_sub_matrix = self.matrix[guess_idxs][:, active_t_idxs]
         
         weights_m1 = np.zeros((V, 243))
         np.add.at(weights_m1, (row_indices_full, full_sub_matrix), weights)
@@ -131,5 +150,8 @@ class Bot2(BaseBot):
         p_m1 = weights_m1 / (total_weight + 1e-12)
         entropy = -np.sum(p_m1 * np.log2(p_m1 + 1e-12), axis=1)
         
-        best_idx_in_valid = np.argmax(entropy)
-        return self.idx_to_guess[self.valid_guess_idxs[best_idx_in_valid]]
+        best_idx = np.argmax(entropy)
+        
+        if use_priors:
+            return self.idx_to_guess[self.valid_guess_idxs[best_idx]]
+        return self.all_words[guess_idxs[best_idx]]
