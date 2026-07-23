@@ -266,4 +266,112 @@ Rank  Pattern      Code   Pool Size   Prob (%)   Sample Target
 20.   ⬛🟨🟨⬛🟨  37     128         1.21%      baler          
 ================================================================
 
+I then generated and uploaded a screenshot of each game and gave it to WordleBot. 
+(I changed CAVIL to VOCAL, ADDER to FREAK and BISON to BRISK)
+With the exception of the second guess for TAUNT, SWORN, FREAK and PIECE (given scores of 98), the guesses all received a 99 skill rating.
+Performance differed for LINER where WordleBot correctly guessed the 50/50 but Bot 3 didn't.
+While I haven't definitively proved it, I am confident that my bot is very close in ability to NYT's.
+After all, NYT's bot isn't perfect and mine could be slightly better (though this is unlikely as NYT's presumably runs off a decision tree).
+I didn't bother comparing expected guesses as my heuristic probably isn't accurate enough and running full decision trees is too expensive.
+
+I then did some performance testing on Bot 3, running it on every word in the allowed guesses for thoroughness.
+Here is a benchmark based on past solutions:
+
+--- PAST WORDLE SOLUTIONS BENCHMARK ---
+Split                       Total_Words Avg_Guesses Win_Rate  Max_Guesses
+            NYT Era (2022)  81          3.4444      100.00%  5           
+            NYT Era (2023) 365          3.3863      100.00%  6           
+            NYT Era (2024) 366          3.4781      100.00%  6           
+            NYT Era (2025) 365          3.4767      100.00%  6           
+            NYT Era (2026) 199          3.5025      100.00%  5           
+Original Era (Games 0-479) 480          3.4979      100.00%  5           
+-----------------------------------------------------------------
+Overall Past Solutions Avg:      3.4661
+Overall Past Solutions Win Rate: 100.00%
+
+The reason why I split at 480 exactly was due to the result of this analysis comparing the two sets of priors (seen vs unseen) I found on the NYT website.
+
+Found 18 distinct words that have repeated in Wordle history.
+=== SEAMLESS CHRONOLOGICAL REGIONS ===
+Tracking continuous blocks with repeated words perfectly blended into their environments...
+
+Games    0 to  383 (2021-06-19 to 2022-07-07) | Status: MATCH    | Count: 384
+Games  384 to  396 (2022-07-08 to 2022-07-20) | Status: MISMATCH | Count: 13
+Games  397 to  397 (2022-07-21 to 2022-07-21) | Status: MATCH    | Count: 1
+Games  398 to  398 (2022-07-22 to 2022-07-22) | Status: MISMATCH | Count: 1
+Games  399 to  399 (2022-07-23 to 2022-07-23) | Status: MATCH    | Count: 1
+Games  400 to  400 (2022-07-24 to 2022-07-24) | Status: MISMATCH | Count: 1
+Games  401 to  401 (2022-07-25 to 2022-07-25) | Status: MATCH    | Count: 1
+Games  402 to  433 (2022-07-26 to 2022-08-26) | Status: MISMATCH | Count: 32
+Games  434 to  434 (2022-08-27 to 2022-08-27) | Status: MATCH    | Count: 1
+Games  435 to  453 (2022-08-28 to 2022-09-15) | Status: MISMATCH | Count: 19
+Games  454 to  454 (2022-09-16 to 2022-09-16) | Status: MATCH    | Count: 1
+Games  455 to  456 (2022-09-17 to 2022-09-18) | Status: MISMATCH | Count: 2
+Games  457 to  457 (2022-09-19 to 2022-09-19) | Status: MATCH    | Count: 1
+Games  458 to  479 (2022-09-20 to 2022-10-11) | Status: MISMATCH | Count: 22
+Games  480 to  480 (2022-10-12 to 2022-10-12) | Status: MATCH    | Count: 1
+Games  481 to 1842 (2022-10-13 to 2026-07-05) | Status: MISMATCH | Count: 1362
+Games 1843 to 1855 (2026-07-06 to 2026-07-18) | Status: MATCH    | Count: 13
+
+===========================================================================
+CLARIFICATION: ADOPTED ROLES FOR REPEATED WORDS
+...
+    - Game 1850 (2026-07-13) blended into region as -> MATCH
+ • 'THUMB':
+    - Game 115 (2021-10-12) blended into region as -> MATCH
+    - Game 1814 (2026-06-07) blended into region as -> MISMATCH
+
+The recent discrepancy is due to the "seen" version of WordleBot being slightly out of sync.
+The large mismatch corresponds to the time difference between the two prior sets.
+The strange results until 480 (I think corresponding to the pre-NYT era) are why I split the words for the benchmark.
+
+As we can see from the benchmarking, Bot 3 performs very well on past solutions, never failing.
+For thoroughness, I also ran the averages for each list of words we have:
+
+--- BOT SUMMARY AVERAGES ---
+Dataset                          Count Unweighted Avg Weighted Avg
+All 15k Words (Full Dictionary) 14855  4.6328            N/A      
+                Top 4,500 Words  4500  3.7962         3.5300      
+ NYT Target List (~3,200 Words)  3209  3.6201         3.5288    
+
+The high average for the 15k is because the bot ignores all words outside the 4500 until it's otherwise impossible, leading to a spike in average guesses.
+As it turns out, every single Wordle solution has been in the 3209 word list:
+
+--- PAST SOLUTIONS: OOF MODEL RANK & LIST INCLUSION ---
+Total Past Answers Analyzed: 1,856
+
+Top 1,000 Ranked:  632  ( 34.1%)
+Top 2,000 Ranked: 1145  ( 61.7%)
+Top 3,000 Ranked: 1520  ( 81.9%)
+----------------------------------------------------
+In NYT Target List (~3.2k): 1856  (100.00%)
+In 4,500 Guess List:        1856  (100.00%)
+
+(Ranking here referring to my heuristic ranking system used to generate the 4500 word list).
+Hence I won't worry about this spike, as a stray word is not only unlikely in the first place, but will also likely be covered in the 4500 word list.
+
+For my adaptive Wordle system, I decided to do research using Bot 2 (with our new priors), as it is much faster to run than Bot 3.
+This is because it'll involve adjusting the priors every day, destroying the caching capability used for bulk assessment.
+Furthermore, Bot 3 runs on priors just like Bot 2, so improvements should be similar across both systems.
+
+After a bit of refactoring and modifying Bot 2 to have the same turn logic when facing words outside its guess list,
+I ran the full benchmarks on Bot 2 as well (after making it use the priors we created):
+
+--- BOT 2 SUMMARY AVERAGES ---
+Dataset                          Count Unweighted Avg Weighted Avg
+All 15k Words (Full Dictionary) 14855  4.6323            N/A      
+                Top 4,500 Words  4500  3.8082         3.6525      
+   NYT Target List (3209 Words)  3209  3.7102         3.6518      
+  
+--- PAST WORDLE SOLUTIONS BENCHMARK ---
+Split                       Total_Words Avg_Guesses Win_Rate  Max_Guesses
+            NYT Era (2022)  81          3.5802      100.00%  5           
+            NYT Era (2023) 365          3.5562      100.00%  5           
+            NYT Era (2024) 366          3.6257      100.00%  6           
+            NYT Era (2025) 365          3.6329      100.00%  6           
+            NYT Era (2026) 199          3.6784      100.00%  5           
+Original Era (Games 0-479) 480          3.6187      100.00%  5           
+-----------------------------------------------------------------
+Overall Past Solutions Avg:      3.6153
+Overall Past Solutions Win Rate: 100.00%
 

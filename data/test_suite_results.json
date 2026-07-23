@@ -1,0 +1,1936 @@
+{
+  "summary": {
+    "total_games": 20,
+    "total_time_seconds": 776.3,
+    "avg_game_time_seconds": 38.81,
+    "win_rate": "100.0%"
+  },
+  "games": [
+    {
+      "game_id": 1,
+      "target": "singe",
+      "turn_2_pool_size": 83,
+      "turns_taken": 4,
+      "won": true,
+      "total_game_time_sec": 23.26,
+      "turn_history": [
+        {
+          "turn": 1,
+          "pool_size_before": 14855,
+          "chosen_guess": "slate",
+          "feedback": "GBBBG",
+          "calc_time_sec": 0.0,
+          "top_4_suggestions": [
+            {
+              "word": "slate",
+              "skill": 99,
+              "expected_score": 3.42
+            }
+          ]
+        },
+        {
+          "turn": 2,
+          "pool_size_before": 83,
+          "chosen_guess": "chirp",
+          "feedback": "BBYBB",
+          "calc_time_sec": 23.22,
+          "top_4_suggestions": [
+            {
+              "word": "chirp",
+              "expected_score": 3.4433448581614705,
+              "skill": 99
+            },
+            {
+              "word": "porch",
+              "expected_score": 3.469393301986833,
+              "skill": 96
+            },
+            {
+              "word": "pinch",
+              "expected_score": 3.471433490640718,
+              "skill": 96
+            },
+            {
+              "word": "chino",
+              "expected_score": 3.4737208985980947,
+              "skill": 96
+            }
+          ]
+        },
+        {
+          "turn": 3,
+          "pool_size_before": 4,
+          "chosen_guess": "sieve",
+          "feedback": "GGBBG",
+          "calc_time_sec": 0.04,
+          "top_4_suggestions": [
+            {
+              "word": "sieve",
+              "expected_score": 2.66283967217227,
+              "skill": 99
+            },
+            {
+              "word": "siege",
+              "expected_score": 2.66283967217227,
+              "skill": 99
+            },
+            {
+              "word": "singe",
+              "expected_score": 2.67432065565546,
+              "skill": 98
+            },
+            {
+              "word": "wrung",
+              "expected_score": 3.0,
+              "skill": 65
+            }
+          ]
+        },
+        {
+          "turn": 4,
+          "pool_size_before": 1,
+          "chosen_guess": "singe",
+          "feedback": "GGGGG",
+          "calc_time_sec": 0.0,
+          "top_4_suggestions": [
+            {
+              "word": "singe",
+              "skill": 99,
+              "expected_score": 2.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "game_id": 2,
+      "target": "plumb",
+      "turn_2_pool_size": 94,
+      "turns_taken": 3,
+      "won": true,
+      "total_game_time_sec": 28.7,
+      "turn_history": [
+        {
+          "turn": 1,
+          "pool_size_before": 14855,
+          "chosen_guess": "slate",
+          "feedback": "BGBBB",
+          "calc_time_sec": 0.0,
+          "top_4_suggestions": [
+            {
+              "word": "slate",
+              "skill": 99,
+              "expected_score": 3.42
+            }
+          ]
+        },
+        {
+          "turn": 2,
+          "pool_size_before": 94,
+          "chosen_guess": "bipod",
+          "feedback": "YBYBB",
+          "calc_time_sec": 28.7,
+          "top_4_suggestions": [
+            {
+              "word": "bipod",
+              "expected_score": 3.558740201023795,
+              "skill": 99
+            },
+            {
+              "word": "flunk",
+              "expected_score": 3.590248913427741,
+              "skill": 96
+            },
+            {
+              "word": "pubic",
+              "expected_score": 3.5955949689555187,
+              "skill": 95
+            },
+            {
+              "word": "bucko",
+              "expected_score": 3.607114639303309,
+              "skill": 94
+            }
+          ]
+        },
+        {
+          "turn": 3,
+          "pool_size_before": 1,
+          "chosen_guess": "plumb",
+          "feedback": "GGGGG",
+          "calc_time_sec": 0.0,
+          "top_4_suggestions": [
+            {
+              "word": "plumb",
+              "skill": 99,
+              "expected_score": 2.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "game_id": 3,
+      "target": "story",
+      "turn_2_pool_size": 107,
+      "turns_taken": 4,
+      "won": true,
+      "total_game_time_sec": 19.41,
+      "turn_history": [
+        {
+          "turn": 1,
+          "pool_size_before": 14855,
+          "chosen_guess": "slate",
+          "feedback": "GBBYB",
+          "calc_time_sec": 0.0,
+          "top_4_suggestions": [
+            {
+              "word": "slate",
+              "skill": 99,
+              "expected_score": 3.42
+            }
+          ]
+        },
+        {
+          "turn": 2,
+          "pool_size_before": 107,
+          "chosen_guess": "pinot",
+          "feedback": "BBBYY",
+          "calc_time_sec": 18.26,
+          "top_4_suggestions": [
+            {
+              "word": "pinot",
+              "expected_score": 3.5098330142411296,
+              "skill": 99
+            },
+            {
+              "word": "count",
+              "expected_score": 3.573572640181241,
+              "skill": 93
+            },
+            {
+              "word": "input",
+              "expected_score": 3.576907923736268,
+              "skill": 92
+            },
+            {
+              "word": "print",
+              "expected_score": 3.599786903714011,
+              "skill": 90
+            }
+          ]
+        },
+        {
+          "turn": 3,
+          "pool_size_before": 11,
+          "chosen_guess": "yucky",
+          "feedback": "BBBBG",
+          "calc_time_sec": 1.11,
+          "top_4_suggestions": [
+            {
+              "word": "yucky",
+              "expected_score": 3.0,
+              "skill": 99
+            },
+            {
+              "word": "wormy",
+              "expected_score": 3.0,
+              "skill": 99
+            },
+            {
+              "word": "wacky",
+              "expected_score": 3.0,
+              "skill": 99
+            },
+            {
+              "word": "smock",
+              "expected_score": 3.0,
+              "skill": 99
+            }
+          ]
+        },
+        {
+          "turn": 4,
+          "pool_size_before": 2,
+          "chosen_guess": "story",
+          "feedback": "GGGGG",
+          "calc_time_sec": 0.04,
+          "top_4_suggestions": [
+            {
+              "word": "story",
+              "expected_score": 2.0,
+              "skill": 99
+            },
+            {
+              "word": "zorro",
+              "expected_score": 3.0,
+              "skill": 0
+            },
+            {
+              "word": "zones",
+              "expected_score": 3.0,
+              "skill": 0
+            },
+            {
+              "word": "zoned",
+              "expected_score": 3.0,
+              "skill": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "game_id": 4,
+      "target": "baler",
+      "turn_2_pool_size": 128,
+      "turns_taken": 4,
+      "won": true,
+      "total_game_time_sec": 17.9,
+      "turn_history": [
+        {
+          "turn": 1,
+          "pool_size_before": 14855,
+          "chosen_guess": "slate",
+          "feedback": "BYYBY",
+          "calc_time_sec": 0.0,
+          "top_4_suggestions": [
+            {
+              "word": "slate",
+              "skill": 99,
+              "expected_score": 3.42
+            }
+          ]
+        },
+        {
+          "turn": 2,
+          "pool_size_before": 128,
+          "chosen_guess": "rangy",
+          "feedback": "YGBBB",
+          "calc_time_sec": 13.76,
+          "top_4_suggestions": [
+            {
+              "word": "rangy",
+              "expected_score": 3.4709699029061882,
+              "skill": 99
+            },
+            {
+              "word": "randy",
+              "expected_score": 3.553755677103844,
+              "skill": 91
+            },
+            {
+              "word": "germy",
+              "expected_score": 3.57253517499369,
+              "skill": 89
+            },
+            {
+              "word": "nerdy",
+              "expected_score": 3.5726310212420005,
+              "skill": 89
+            }
+          ]
+        },
+        {
+          "turn": 3,
+          "pool_size_before": 12,
+          "chosen_guess": "paler",
+          "feedback": "BGGGG",
+          "calc_time_sec": 2.82,
+          "top_4_suggestions": [
+            {
+              "word": "paler",
+              "expected_score": 2.6358514923388743,
+              "skill": 99
+            },
+            {
+              "word": "baler",
+              "expected_score": 2.695644498500953,
+              "skill": 93
+            },
+            {
+              "word": "lamer",
+              "expected_score": 2.989701295448013,
+              "skill": 64
+            },
+            {
+              "word": "palms",
+              "expected_score": 3.0014394687857697,
+              "skill": 62
+            }
+          ]
+        },
+        {
+          "turn": 4,
+          "pool_size_before": 3,
+          "chosen_guess": "baler",
+          "feedback": "GGGGG",
+          "calc_time_sec": 1.31,
+          "top_4_suggestions": [
+            {
+              "word": "baler",
+              "expected_score": 2.0,
+              "skill": 99
+            },
+            {
+              "word": "zorro",
+              "expected_score": 3.0,
+              "skill": 0
+            },
+            {
+              "word": "zones",
+              "expected_score": 3.0,
+              "skill": 0
+            },
+            {
+              "word": "zoned",
+              "expected_score": 3.0,
+              "skill": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "game_id": 5,
+      "target": "booth",
+      "turn_2_pool_size": 150,
+      "turns_taken": 3,
+      "won": true,
+      "total_game_time_sec": 23.0,
+      "turn_history": [
+        {
+          "turn": 1,
+          "pool_size_before": 14855,
+          "chosen_guess": "slate",
+          "feedback": "BBBGB",
+          "calc_time_sec": 0.0,
+          "top_4_suggestions": [
+            {
+              "word": "slate",
+              "skill": 99,
+              "expected_score": 3.42
+            }
+          ]
+        },
+        {
+          "turn": 2,
+          "pool_size_before": 150,
+          "chosen_guess": "briny",
+          "feedback": "GBBBB",
+          "calc_time_sec": 22.92,
+          "top_4_suggestions": [
+            {
+              "word": "briny",
+              "expected_score": 3.501619149921501,
+              "skill": 99
+            },
+            {
+              "word": "irony",
+              "expected_score": 3.5469299559223386,
+              "skill": 94
+            },
+            {
+              "word": "rhino",
+              "expected_score": 3.573138131675643,
+              "skill": 92
+            },
+            {
+              "word": "forum",
+              "expected_score": 3.5779529760675515,
+              "skill": 91
+            }
+          ]
+        },
+        {
+          "turn": 3,
+          "pool_size_before": 2,
+          "chosen_guess": "booth",
+          "feedback": "GGGGG",
+          "calc_time_sec": 0.07,
+          "top_4_suggestions": [
+            {
+              "word": "booth",
+              "expected_score": 2.0,
+              "skill": 99
+            },
+            {
+              "word": "zorro",
+              "expected_score": 3.0,
+              "skill": 0
+            },
+            {
+              "word": "zones",
+              "expected_score": 3.0,
+              "skill": 0
+            },
+            {
+              "word": "zoned",
+              "expected_score": 3.0,
+              "skill": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "game_id": 6,
+      "target": "vague",
+      "turn_2_pool_size": 197,
+      "turns_taken": 3,
+      "won": true,
+      "total_game_time_sec": 23.27,
+      "turn_history": [
+        {
+          "turn": 1,
+          "pool_size_before": 14855,
+          "chosen_guess": "slate",
+          "feedback": "BBYBG",
+          "calc_time_sec": 0.0,
+          "top_4_suggestions": [
+            {
+              "word": "slate",
+              "skill": 99,
+              "expected_score": 3.42
+            }
+          ]
+        },
+        {
+          "turn": 2,
+          "pool_size_before": 197,
+          "chosen_guess": "corgi",
+          "feedback": "BBBYB",
+          "calc_time_sec": 21.53,
+          "top_4_suggestions": [
+            {
+              "word": "corgi",
+              "expected_score": 3.4597750239673997,
+              "skill": 99
+            },
+            {
+              "word": "garbo",
+              "expected_score": 3.4599666454292795,
+              "skill": 99
+            },
+            {
+              "word": "cairn",
+              "expected_score": 3.464529099886838,
+              "skill": 99
+            },
+            {
+              "word": "cargo",
+              "expected_score": 3.4852017416480283,
+              "skill": 96
+            }
+          ]
+        },
+        {
+          "turn": 3,
+          "pool_size_before": 12,
+          "chosen_guess": "vague",
+          "feedback": "GGGGG",
+          "calc_time_sec": 1.74,
+          "top_4_suggestions": [
+            {
+              "word": "vague",
+              "expected_score": 2.6666666666666665,
+              "skill": 99
+            },
+            {
+              "word": "gauze",
+              "expected_score": 2.6666666666666665,
+              "skill": 99
+            },
+            {
+              "word": "gaffe",
+              "expected_score": 2.6666666666666665,
+              "skill": 99
+            },
+            {
+              "word": "wrung",
+              "expected_score": 3.0,
+              "skill": 66
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "game_id": 7,
+      "target": "drama",
+      "turn_2_pool_size": 219,
+      "turns_taken": 4,
+      "won": true,
+      "total_game_time_sec": 27.95,
+      "turn_history": [
+        {
+          "turn": 1,
+          "pool_size_before": 14855,
+          "chosen_guess": "slate",
+          "feedback": "BBGBB",
+          "calc_time_sec": 0.0,
+          "top_4_suggestions": [
+            {
+              "word": "slate",
+              "skill": 99,
+              "expected_score": 3.42
+            }
+          ]
+        },
+        {
+          "turn": 2,
+          "pool_size_before": 219,
+          "chosen_guess": "churn",
+          "feedback": "BBBYB",
+          "calc_time_sec": 22.8,
+          "top_4_suggestions": [
+            {
+              "word": "churn",
+              "expected_score": 3.5511563161349207,
+              "skill": 99
+            },
+            {
+              "word": "grind",
+              "expected_score": 3.5684349602033962,
+              "skill": 97
+            },
+            {
+              "word": "crony",
+              "expected_score": 3.573107046549854,
+              "skill": 97
+            },
+            {
+              "word": "drown",
+              "expected_score": 3.588830982386632,
+              "skill": 95
+            }
+          ]
+        },
+        {
+          "turn": 3,
+          "pool_size_before": 22,
+          "chosen_guess": "bravo",
+          "feedback": "BGGBB",
+          "calc_time_sec": 4.03,
+          "top_4_suggestions": [
+            {
+              "word": "bravo",
+              "expected_score": 2.795441328174909,
+              "skill": 99
+            },
+            {
+              "word": "brava",
+              "expected_score": 2.8182346873003636,
+              "skill": 97
+            },
+            {
+              "word": "braid",
+              "expected_score": 2.9772066408745457,
+              "skill": 81
+            },
+            {
+              "word": "yoked",
+              "expected_score": 3.0,
+              "skill": 79
+            }
+          ]
+        },
+        {
+          "turn": 4,
+          "pool_size_before": 10,
+          "chosen_guess": "drama",
+          "feedback": "GGGGG",
+          "calc_time_sec": 1.11,
+          "top_4_suggestions": [
+            {
+              "word": "drama",
+              "expected_score": 2.0,
+              "skill": 99
+            },
+            {
+              "word": "zorro",
+              "expected_score": 3.0,
+              "skill": 0
+            },
+            {
+              "word": "zones",
+              "expected_score": 3.0,
+              "skill": 0
+            },
+            {
+              "word": "zoned",
+              "expected_score": 3.0,
+              "skill": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "game_id": 8,
+      "target": "taunt",
+      "turn_2_pool_size": 240,
+      "turns_taken": 4,
+      "won": true,
+      "total_game_time_sec": 28.18,
+      "turn_history": [
+        {
+          "turn": 1,
+          "pool_size_before": 14855,
+          "chosen_guess": "slate",
+          "feedback": "BBYYB",
+          "calc_time_sec": 0.0,
+          "top_4_suggestions": [
+            {
+              "word": "slate",
+              "skill": 99,
+              "expected_score": 3.42
+            }
+          ]
+        },
+        {
+          "turn": 2,
+          "pool_size_before": 240,
+          "chosen_guess": "tabor",
+          "feedback": "GGBBB",
+          "calc_time_sec": 22.68,
+          "top_4_suggestions": [
+            {
+              "word": "tabor",
+              "expected_score": 3.6472520641836805,
+              "skill": 99
+            },
+            {
+              "word": "tarot",
+              "expected_score": 3.669321522951078,
+              "skill": 97
+            },
+            {
+              "word": "orbit",
+              "expected_score": 3.6921937753109857,
+              "skill": 95
+            },
+            {
+              "word": "cubit",
+              "expected_score": 3.6942935654730196,
+              "skill": 94
+            }
+          ]
+        },
+        {
+          "turn": 3,
+          "pool_size_before": 32,
+          "chosen_guess": "cynic",
+          "feedback": "BBYBB",
+          "calc_time_sec": 5.49,
+          "top_4_suggestions": [
+            {
+              "word": "cynic",
+              "expected_score": 3.0005555422468775,
+              "skill": 99
+            },
+            {
+              "word": "funny",
+              "expected_score": 3.0005555422468775,
+              "skill": 99
+            },
+            {
+              "word": "funky",
+              "expected_score": 3.000555542246878,
+              "skill": 99
+            },
+            {
+              "word": "kinky",
+              "expected_score": 3.000555542246878,
+              "skill": 99
+            }
+          ]
+        },
+        {
+          "turn": 4,
+          "pool_size_before": 1,
+          "chosen_guess": "taunt",
+          "feedback": "GGGGG",
+          "calc_time_sec": 0.0,
+          "top_4_suggestions": [
+            {
+              "word": "taunt",
+              "skill": 99,
+              "expected_score": 2.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "game_id": 9,
+      "target": "liner",
+      "turn_2_pool_size": 283,
+      "turns_taken": 4,
+      "won": true,
+      "total_game_time_sec": 26.81,
+      "turn_history": [
+        {
+          "turn": 1,
+          "pool_size_before": 14855,
+          "chosen_guess": "slate",
+          "feedback": "BYBBY",
+          "calc_time_sec": 0.0,
+          "top_4_suggestions": [
+            {
+              "word": "slate",
+              "skill": 99,
+              "expected_score": 3.42
+            }
+          ]
+        },
+        {
+          "turn": 2,
+          "pool_size_before": 283,
+          "chosen_guess": "never",
+          "feedback": "YBBGG",
+          "calc_time_sec": 26.78,
+          "top_4_suggestions": [
+            {
+              "word": "never",
+              "expected_score": 3.689943174588101,
+              "skill": 99
+            },
+            {
+              "word": "riven",
+              "expected_score": 3.7252549556438717,
+              "skill": 95
+            },
+            {
+              "word": "robin",
+              "expected_score": 3.751850754621061,
+              "skill": 93
+            },
+            {
+              "word": "newer",
+              "expected_score": 3.7715638263476046,
+              "skill": 91
+            }
+          ]
+        },
+        {
+          "turn": 3,
+          "pool_size_before": 2,
+          "chosen_guess": "loner",
+          "feedback": "GBGGG",
+          "calc_time_sec": 0.04,
+          "top_4_suggestions": [
+            {
+              "word": "loner",
+              "expected_score": 2.5,
+              "skill": 99
+            },
+            {
+              "word": "liner",
+              "expected_score": 2.5,
+              "skill": 99
+            },
+            {
+              "word": "young",
+              "expected_score": 3.0,
+              "skill": 49
+            },
+            {
+              "word": "yokel",
+              "expected_score": 3.0,
+              "skill": 49
+            }
+          ]
+        },
+        {
+          "turn": 4,
+          "pool_size_before": 1,
+          "chosen_guess": "liner",
+          "feedback": "GGGGG",
+          "calc_time_sec": 0.0,
+          "top_4_suggestions": [
+            {
+              "word": "liner",
+              "skill": 99,
+              "expected_score": 2.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "game_id": 10,
+      "target": "sworn",
+      "turn_2_pool_size": 287,
+      "turns_taken": 3,
+      "won": true,
+      "total_game_time_sec": 30.87,
+      "turn_history": [
+        {
+          "turn": 1,
+          "pool_size_before": 14855,
+          "chosen_guess": "slate",
+          "feedback": "GBBBB",
+          "calc_time_sec": 0.0,
+          "top_4_suggestions": [
+            {
+              "word": "slate",
+              "skill": 99,
+              "expected_score": 3.42
+            }
+          ]
+        },
+        {
+          "turn": 2,
+          "pool_size_before": 287,
+          "chosen_guess": "churn",
+          "feedback": "BBBGG",
+          "calc_time_sec": 30.87,
+          "top_4_suggestions": [
+            {
+              "word": "churn",
+              "expected_score": 3.542659352287159,
+              "skill": 99
+            },
+            {
+              "word": "croup",
+              "expected_score": 3.554128010738748,
+              "skill": 98
+            },
+            {
+              "word": "chirp",
+              "expected_score": 3.5580347488169903,
+              "skill": 97
+            },
+            {
+              "word": "porch",
+              "expected_score": 3.570511909561132,
+              "skill": 96
+            }
+          ]
+        },
+        {
+          "turn": 3,
+          "pool_size_before": 1,
+          "chosen_guess": "sworn",
+          "feedback": "GGGGG",
+          "calc_time_sec": 0.0,
+          "top_4_suggestions": [
+            {
+              "word": "sworn",
+              "skill": 99,
+              "expected_score": 2.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "game_id": 11,
+      "target": "deter",
+      "turn_2_pool_size": 299,
+      "turns_taken": 4,
+      "won": true,
+      "total_game_time_sec": 34.38,
+      "turn_history": [
+        {
+          "turn": 1,
+          "pool_size_before": 14855,
+          "chosen_guess": "slate",
+          "feedback": "BBBYY",
+          "calc_time_sec": 0.0,
+          "top_4_suggestions": [
+            {
+              "word": "slate",
+              "skill": 99,
+              "expected_score": 3.42
+            }
+          ]
+        },
+        {
+          "turn": 2,
+          "pool_size_before": 299,
+          "chosen_guess": "titer",
+          "feedback": "BBGGG",
+          "calc_time_sec": 31.77,
+          "top_4_suggestions": [
+            {
+              "word": "titer",
+              "expected_score": 3.665530776328106,
+              "skill": 99
+            },
+            {
+              "word": "timer",
+              "expected_score": 3.683318294412934,
+              "skill": 97
+            },
+            {
+              "word": "eider",
+              "expected_score": 3.6848768283000783,
+              "skill": 97
+            },
+            {
+              "word": "toner",
+              "expected_score": 3.6947042192139357,
+              "skill": 96
+            }
+          ]
+        },
+        {
+          "turn": 3,
+          "pool_size_before": 15,
+          "chosen_guess": "pound",
+          "feedback": "BBBBY",
+          "calc_time_sec": 2.6,
+          "top_4_suggestions": [
+            {
+              "word": "pound",
+              "expected_score": 3.0,
+              "skill": 99
+            },
+            {
+              "word": "mound",
+              "expected_score": 3.0,
+              "skill": 99
+            },
+            {
+              "word": "ponds",
+              "expected_score": 3.1420452530157426,
+              "skill": 85
+            },
+            {
+              "word": "moped",
+              "expected_score": 3.1420452530157426,
+              "skill": 85
+            }
+          ]
+        },
+        {
+          "turn": 4,
+          "pool_size_before": 1,
+          "chosen_guess": "deter",
+          "feedback": "GGGGG",
+          "calc_time_sec": 0.0,
+          "top_4_suggestions": [
+            {
+              "word": "deter",
+              "skill": 99,
+              "expected_score": 2.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "game_id": 12,
+      "target": "third",
+      "turn_2_pool_size": 302,
+      "turns_taken": 4,
+      "won": true,
+      "total_game_time_sec": 44.21,
+      "turn_history": [
+        {
+          "turn": 1,
+          "pool_size_before": 14855,
+          "chosen_guess": "slate",
+          "feedback": "BBBYB",
+          "calc_time_sec": 0.0,
+          "top_4_suggestions": [
+            {
+              "word": "slate",
+              "skill": 99,
+              "expected_score": 3.42
+            }
+          ]
+        },
+        {
+          "turn": 2,
+          "pool_size_before": 302,
+          "chosen_guess": "count",
+          "feedback": "BBBBY",
+          "calc_time_sec": 39.53,
+          "top_4_suggestions": [
+            {
+              "word": "count",
+              "expected_score": 3.6120051939981845,
+              "skill": 99
+            },
+            {
+              "word": "churn",
+              "expected_score": 3.6265245463929965,
+              "skill": 98
+            },
+            {
+              "word": "chino",
+              "expected_score": 3.632120904733841,
+              "skill": 97
+            },
+            {
+              "word": "point",
+              "expected_score": 3.636433967397756,
+              "skill": 97
+            }
+          ]
+        },
+        {
+          "turn": 3,
+          "pool_size_before": 23,
+          "chosen_guess": "ritzy",
+          "feedback": "YYYBB",
+          "calc_time_sec": 3.47,
+          "top_4_suggestions": [
+            {
+              "word": "ritzy",
+              "expected_score": 2.8570832793846344,
+              "skill": 99
+            },
+            {
+              "word": "third",
+              "expected_score": 2.85748902129072,
+              "skill": 99
+            },
+            {
+              "word": "ditzy",
+              "expected_score": 2.8587794980159993,
+              "skill": 99
+            },
+            {
+              "word": "purdy",
+              "expected_score": 3.0,
+              "skill": 85
+            }
+          ]
+        },
+        {
+          "turn": 4,
+          "pool_size_before": 6,
+          "chosen_guess": "third",
+          "feedback": "GGGGG",
+          "calc_time_sec": 1.21,
+          "top_4_suggestions": [
+            {
+              "word": "third",
+              "expected_score": 2.0,
+              "skill": 99
+            },
+            {
+              "word": "zorro",
+              "expected_score": 3.0,
+              "skill": 0
+            },
+            {
+              "word": "zones",
+              "expected_score": 3.0,
+              "skill": 0
+            },
+            {
+              "word": "zoned",
+              "expected_score": 3.0,
+              "skill": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "game_id": 13,
+      "target": "knoll",
+      "turn_2_pool_size": 325,
+      "turns_taken": 3,
+      "won": true,
+      "total_game_time_sec": 35.67,
+      "turn_history": [
+        {
+          "turn": 1,
+          "pool_size_before": 14855,
+          "chosen_guess": "slate",
+          "feedback": "BYBBB",
+          "calc_time_sec": 0.0,
+          "top_4_suggestions": [
+            {
+              "word": "slate",
+              "skill": 99,
+              "expected_score": 3.42
+            }
+          ]
+        },
+        {
+          "turn": 2,
+          "pool_size_before": 325,
+          "chosen_guess": "dilly",
+          "feedback": "BBYGB",
+          "calc_time_sec": 35.31,
+          "top_4_suggestions": [
+            {
+              "word": "dilly",
+              "expected_score": 3.71354089894189,
+              "skill": 99
+            },
+            {
+              "word": "gilly",
+              "expected_score": 3.720688997603009,
+              "skill": 98
+            },
+            {
+              "word": "drill",
+              "expected_score": 3.7452749528451443,
+              "skill": 96
+            },
+            {
+              "word": "hilly",
+              "expected_score": 3.7516760818880828,
+              "skill": 95
+            }
+          ]
+        },
+        {
+          "turn": 3,
+          "pool_size_before": 3,
+          "chosen_guess": "knoll",
+          "feedback": "GGGGG",
+          "calc_time_sec": 0.36,
+          "top_4_suggestions": [
+            {
+              "word": "knoll",
+              "expected_score": 2.0,
+              "skill": 99
+            },
+            {
+              "word": "zorro",
+              "expected_score": 3.0,
+              "skill": 0
+            },
+            {
+              "word": "zones",
+              "expected_score": 3.0,
+              "skill": 0
+            },
+            {
+              "word": "zoned",
+              "expected_score": 3.0,
+              "skill": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "game_id": 14,
+      "target": "vocal",
+      "turn_2_pool_size": 399,
+      "turns_taken": 4,
+      "won": true,
+      "total_game_time_sec": 34.28,
+      "turn_history": [
+        {
+          "turn": 1,
+          "pool_size_before": 14855,
+          "chosen_guess": "slate",
+          "feedback": "BYYBB",
+          "calc_time_sec": 0.0,
+          "top_4_suggestions": [
+            {
+              "word": "slate",
+              "skill": 99,
+              "expected_score": 3.42
+            }
+          ]
+        },
+        {
+          "turn": 2,
+          "pool_size_before": 399,
+          "chosen_guess": "molar",
+          "feedback": "BGYGB",
+          "calc_time_sec": 30.02,
+          "top_4_suggestions": [
+            {
+              "word": "molar",
+              "expected_score": 3.662427450504067,
+              "skill": 99
+            },
+            {
+              "word": "rally",
+              "expected_score": 3.6760076453189026,
+              "skill": 98
+            },
+            {
+              "word": "minor",
+              "expected_score": 3.68557001437908,
+              "skill": 97
+            },
+            {
+              "word": "molly",
+              "expected_score": 3.6913839589702797,
+              "skill": 96
+            }
+          ]
+        },
+        {
+          "turn": 3,
+          "pool_size_before": 20,
+          "chosen_guess": "local",
+          "feedback": "BGGGG",
+          "calc_time_sec": 4.22,
+          "top_4_suggestions": [
+            {
+              "word": "local",
+              "expected_score": 3.150079260630275,
+              "skill": 99
+            },
+            {
+              "word": "lynch",
+              "expected_score": 3.174775369955764,
+              "skill": 97
+            },
+            {
+              "word": "lunch",
+              "expected_score": 3.1747753699557646,
+              "skill": 97
+            },
+            {
+              "word": "vinyl",
+              "expected_score": 3.175456294797112,
+              "skill": 96
+            }
+          ]
+        },
+        {
+          "turn": 4,
+          "pool_size_before": 2,
+          "chosen_guess": "vocal",
+          "feedback": "GGGGG",
+          "calc_time_sec": 0.04,
+          "top_4_suggestions": [
+            {
+              "word": "vocal",
+              "expected_score": 2.5,
+              "skill": 99
+            },
+            {
+              "word": "focal",
+              "expected_score": 2.5,
+              "skill": 99
+            },
+            {
+              "word": "vixen",
+              "expected_score": 3.0,
+              "skill": 49
+            },
+            {
+              "word": "vivid",
+              "expected_score": 3.0,
+              "skill": 49
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "game_id": 15,
+      "target": "freak",
+      "turn_2_pool_size": 433,
+      "turns_taken": 4,
+      "won": true,
+      "total_game_time_sec": 38.45,
+      "turn_history": [
+        {
+          "turn": 1,
+          "pool_size_before": 14855,
+          "chosen_guess": "slate",
+          "feedback": "BBYBY",
+          "calc_time_sec": 0.0,
+          "top_4_suggestions": [
+            {
+              "word": "slate",
+              "skill": 99,
+              "expected_score": 3.42
+            }
+          ]
+        },
+        {
+          "turn": 2,
+          "pool_size_before": 433,
+          "chosen_guess": "radar",
+          "feedback": "YBBGB",
+          "calc_time_sec": 35.27,
+          "top_4_suggestions": [
+            {
+              "word": "radar",
+              "expected_score": 3.8435148187164216,
+              "skill": 99
+            },
+            {
+              "word": "raced",
+              "expected_score": 3.852563210804333,
+              "skill": 98
+            },
+            {
+              "word": "cedar",
+              "expected_score": 3.8653415031971345,
+              "skill": 97
+            },
+            {
+              "word": "cared",
+              "expected_score": 3.875320845919112,
+              "skill": 96
+            }
+          ]
+        },
+        {
+          "turn": 3,
+          "pool_size_before": 11,
+          "chosen_guess": "wombs",
+          "feedback": "BBBBB",
+          "calc_time_sec": 2.1,
+          "top_4_suggestions": [
+            {
+              "word": "wombs",
+              "expected_score": 3.1667369886165266,
+              "skill": 99
+            },
+            {
+              "word": "wicks",
+              "expected_score": 3.1669694100352954,
+              "skill": 99
+            },
+            {
+              "word": "whack",
+              "expected_score": 3.1669694100352954,
+              "skill": 99
+            },
+            {
+              "word": "wacko",
+              "expected_score": 3.1669694100352954,
+              "skill": 99
+            }
+          ]
+        },
+        {
+          "turn": 4,
+          "pool_size_before": 5,
+          "chosen_guess": "freak",
+          "feedback": "GGGGG",
+          "calc_time_sec": 1.08,
+          "top_4_suggestions": [
+            {
+              "word": "freak",
+              "expected_score": 2.499651757623306,
+              "skill": 99
+            },
+            {
+              "word": "creak",
+              "expected_score": 2.500348242376694,
+              "skill": 99
+            },
+            {
+              "word": "yacht",
+              "expected_score": 3.0,
+              "skill": 49
+            },
+            {
+              "word": "wreck",
+              "expected_score": 3.0,
+              "skill": 49
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "game_id": 16,
+      "target": "piece",
+      "turn_2_pool_size": 506,
+      "turns_taken": 4,
+      "won": true,
+      "total_game_time_sec": 50.66,
+      "turn_history": [
+        {
+          "turn": 1,
+          "pool_size_before": 14855,
+          "chosen_guess": "slate",
+          "feedback": "BBBBG",
+          "calc_time_sec": 0.0,
+          "top_4_suggestions": [
+            {
+              "word": "slate",
+              "skill": 99,
+              "expected_score": 3.42
+            }
+          ]
+        },
+        {
+          "turn": 2,
+          "pool_size_before": 506,
+          "chosen_guess": "doing",
+          "feedback": "BBYBB",
+          "calc_time_sec": 44.2,
+          "top_4_suggestions": [
+            {
+              "word": "doing",
+              "expected_score": 3.6854097480299632,
+              "skill": 99
+            },
+            {
+              "word": "group",
+              "expected_score": 3.6968108448561763,
+              "skill": 98
+            },
+            {
+              "word": "dingo",
+              "expected_score": 3.701587092146493,
+              "skill": 97
+            },
+            {
+              "word": "grind",
+              "expected_score": 3.7032406802591513,
+              "skill": 97
+            }
+          ]
+        },
+        {
+          "turn": 3,
+          "pool_size_before": 37,
+          "chosen_guess": "puree",
+          "feedback": "GBBYG",
+          "calc_time_sec": 6.45,
+          "top_4_suggestions": [
+            {
+              "word": "puree",
+              "expected_score": 3.000776778935414,
+              "skill": 99
+            },
+            {
+              "word": "rupee",
+              "expected_score": 3.000776778935414,
+              "skill": 99
+            },
+            {
+              "word": "equip",
+              "expected_score": 3.000776778935414,
+              "skill": 99
+            },
+            {
+              "word": "exurb",
+              "expected_score": 3.000776778935414,
+              "skill": 99
+            }
+          ]
+        },
+        {
+          "turn": 4,
+          "pool_size_before": 1,
+          "chosen_guess": "piece",
+          "feedback": "GGGGG",
+          "calc_time_sec": 0.0,
+          "top_4_suggestions": [
+            {
+              "word": "piece",
+              "skill": 99,
+              "expected_score": 2.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "game_id": 17,
+      "target": "brisk",
+      "turn_2_pool_size": 938,
+      "turns_taken": 4,
+      "won": true,
+      "total_game_time_sec": 58.06,
+      "turn_history": [
+        {
+          "turn": 1,
+          "pool_size_before": 14855,
+          "chosen_guess": "slate",
+          "feedback": "YBBBB",
+          "calc_time_sec": 0.0,
+          "top_4_suggestions": [
+            {
+              "word": "slate",
+              "skill": 99,
+              "expected_score": 3.42
+            }
+          ]
+        },
+        {
+          "turn": 2,
+          "pool_size_before": 938,
+          "chosen_guess": "hokum",
+          "feedback": "BBYBB",
+          "calc_time_sec": 51.43,
+          "top_4_suggestions": [
+            {
+              "word": "hokum",
+              "expected_score": 3.5517279548009917,
+              "skill": 99
+            },
+            {
+              "word": "micky",
+              "expected_score": 3.5562164911192733,
+              "skill": 99
+            },
+            {
+              "word": "mochi",
+              "expected_score": 3.558994335723467,
+              "skill": 98
+            },
+            {
+              "word": "pouch",
+              "expected_score": 3.577268522162904,
+              "skill": 96
+            }
+          ]
+        },
+        {
+          "turn": 3,
+          "pool_size_before": 38,
+          "chosen_guess": "frisk",
+          "feedback": "BGGGG",
+          "calc_time_sec": 6.63,
+          "top_4_suggestions": [
+            {
+              "word": "frisk",
+              "expected_score": 2.764186517425741,
+              "skill": 99
+            },
+            {
+              "word": "brisk",
+              "expected_score": 2.764186517425741,
+              "skill": 99
+            },
+            {
+              "word": "birds",
+              "expected_score": 3.0118378781360597,
+              "skill": 74
+            },
+            {
+              "word": "brews",
+              "expected_score": 3.0124871101531454,
+              "skill": 74
+            }
+          ]
+        },
+        {
+          "turn": 4,
+          "pool_size_before": 1,
+          "chosen_guess": "brisk",
+          "feedback": "GGGGG",
+          "calc_time_sec": 0.0,
+          "top_4_suggestions": [
+            {
+              "word": "brisk",
+              "skill": 99,
+              "expected_score": 2.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "game_id": 18,
+      "target": "weigh",
+      "turn_2_pool_size": 942,
+      "turns_taken": 4,
+      "won": true,
+      "total_game_time_sec": 71.35,
+      "turn_history": [
+        {
+          "turn": 1,
+          "pool_size_before": 14855,
+          "chosen_guess": "slate",
+          "feedback": "BBBBY",
+          "calc_time_sec": 0.0,
+          "top_4_suggestions": [
+            {
+              "word": "slate",
+              "skill": 99,
+              "expected_score": 3.42
+            }
+          ]
+        },
+        {
+          "turn": 2,
+          "pool_size_before": 942,
+          "chosen_guess": "diner",
+          "feedback": "BYBYB",
+          "calc_time_sec": 69.21,
+          "top_4_suggestions": [
+            {
+              "word": "diner",
+              "expected_score": 3.921263048136718,
+              "skill": 99
+            },
+            {
+              "word": "decor",
+              "expected_score": 3.9805614152999116,
+              "skill": 93
+            },
+            {
+              "word": "cider",
+              "expected_score": 3.9879303894156886,
+              "skill": 92
+            },
+            {
+              "word": "drier",
+              "expected_score": 3.9926048054489263,
+              "skill": 92
+            }
+          ]
+        },
+        {
+          "turn": 3,
+          "pool_size_before": 13,
+          "chosen_guess": "emoji",
+          "feedback": "YBBBY",
+          "calc_time_sec": 2.1,
+          "top_4_suggestions": [
+            {
+              "word": "emoji",
+              "expected_score": 2.6683959764252823,
+              "skill": 99
+            },
+            {
+              "word": "equip",
+              "expected_score": 2.6683959764252823,
+              "skill": 99
+            },
+            {
+              "word": "would",
+              "expected_score": 3.0,
+              "skill": 66
+            },
+            {
+              "word": "wimpy",
+              "expected_score": 3.0,
+              "skill": 66
+            }
+          ]
+        },
+        {
+          "turn": 4,
+          "pool_size_before": 4,
+          "chosen_guess": "weigh",
+          "feedback": "GGGGG",
+          "calc_time_sec": 0.04,
+          "top_4_suggestions": [
+            {
+              "word": "weigh",
+              "expected_score": 2.003880880091165,
+              "skill": 99
+            },
+            {
+              "word": "heigh",
+              "expected_score": 2.996119119908835,
+              "skill": 0
+            },
+            {
+              "word": "unwed",
+              "expected_score": 3.0,
+              "skill": 0
+            },
+            {
+              "word": "tawny",
+              "expected_score": 3.0,
+              "skill": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "game_id": 19,
+      "target": "frown",
+      "turn_2_pool_size": 1059,
+      "turns_taken": 4,
+      "won": true,
+      "total_game_time_sec": 88.92,
+      "turn_history": [
+        {
+          "turn": 1,
+          "pool_size_before": 14855,
+          "chosen_guess": "slate",
+          "feedback": "BBBBB",
+          "calc_time_sec": 0.0,
+          "top_4_suggestions": [
+            {
+              "word": "slate",
+              "skill": 99,
+              "expected_score": 3.42
+            }
+          ]
+        },
+        {
+          "turn": 2,
+          "pool_size_before": 1059,
+          "chosen_guess": "crony",
+          "feedback": "BGGYB",
+          "calc_time_sec": 86.36,
+          "top_4_suggestions": [
+            {
+              "word": "crony",
+              "expected_score": 3.9151131594470736,
+              "skill": 99
+            },
+            {
+              "word": "bring",
+              "expected_score": 3.923921483554294,
+              "skill": 98
+            },
+            {
+              "word": "bronc",
+              "expected_score": 3.9264718049742986,
+              "skill": 98
+            },
+            {
+              "word": "round",
+              "expected_score": 3.9340989695323403,
+              "skill": 97
+            }
+          ]
+        },
+        {
+          "turn": 3,
+          "pool_size_before": 8,
+          "chosen_guess": "gibed",
+          "feedback": "BBBBB",
+          "calc_time_sec": 1.69,
+          "top_4_suggestions": [
+            {
+              "word": "gibed",
+              "expected_score": 3.0,
+              "skill": 99
+            },
+            {
+              "word": "fudgy",
+              "expected_score": 3.194923995793478,
+              "skill": 80
+            },
+            {
+              "word": "defog",
+              "expected_score": 3.194923995793478,
+              "skill": 80
+            },
+            {
+              "word": "debug",
+              "expected_score": 3.194923995793478,
+              "skill": 80
+            }
+          ]
+        },
+        {
+          "turn": 4,
+          "pool_size_before": 3,
+          "chosen_guess": "frown",
+          "feedback": "GGGGG",
+          "calc_time_sec": 0.87,
+          "top_4_suggestions": [
+            {
+              "word": "frown",
+              "expected_score": 2.0,
+              "skill": 99
+            },
+            {
+              "word": "zorro",
+              "expected_score": 3.0,
+              "skill": 0
+            },
+            {
+              "word": "zones",
+              "expected_score": 3.0,
+              "skill": 0
+            },
+            {
+              "word": "zoned",
+              "expected_score": 3.0,
+              "skill": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "game_id": 20,
+      "target": "march",
+      "turn_2_pool_size": 1101,
+      "turns_taken": 3,
+      "won": true,
+      "total_game_time_sec": 70.95,
+      "turn_history": [
+        {
+          "turn": 1,
+          "pool_size_before": 14855,
+          "chosen_guess": "slate",
+          "feedback": "BBYBB",
+          "calc_time_sec": 0.0,
+          "top_4_suggestions": [
+            {
+              "word": "slate",
+              "skill": 99,
+              "expected_score": 3.42
+            }
+          ]
+        },
+        {
+          "turn": 2,
+          "pool_size_before": 1101,
+          "chosen_guess": "corny",
+          "feedback": "YBGBB",
+          "calc_time_sec": 69.08,
+          "top_4_suggestions": [
+            {
+              "word": "corny",
+              "expected_score": 3.777501771532811,
+              "skill": 99
+            },
+            {
+              "word": "carom",
+              "expected_score": 3.7810688823638463,
+              "skill": 99
+            },
+            {
+              "word": "carny",
+              "expected_score": 3.798067928447481,
+              "skill": 97
+            },
+            {
+              "word": "crony",
+              "expected_score": 3.7992590824505035,
+              "skill": 97
+            }
+          ]
+        },
+        {
+          "turn": 3,
+          "pool_size_before": 9,
+          "chosen_guess": "march",
+          "feedback": "GGGGG",
+          "calc_time_sec": 1.87,
+          "top_4_suggestions": [
+            {
+              "word": "march",
+              "expected_score": 2.6440263890357283,
+              "skill": 99
+            },
+            {
+              "word": "parch",
+              "expected_score": 2.711947221928544,
+              "skill": 92
+            },
+            {
+              "word": "acrid",
+              "expected_score": 2.932079167107184,
+              "skill": 70
+            },
+            {
+              "word": "staph",
+              "expected_score": 3.0,
+              "skill": 63
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
