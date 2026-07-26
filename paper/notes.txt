@@ -1,3 +1,5 @@
+# Research notes
+
 Wordle no longer has an official solution list. The word each day is manually chosen by an editor.
 It seems to still be hovering around 3000 valid words but this may be meaningless.
 Wordle has now started repeating words, with 1 in 9 words being repeats since the announcement.
@@ -9,6 +11,8 @@ Wordlebot code has a set of stored priors.
 
 As of June 29th 2023 it takes on average 3.5 guesses.
 Current performance may be worse as less common words may be used now.
+
+# Project
 
 As we can't easily test WordleBot itself we shall compare performance with a system without any knowledge of previous answers as our baseline.
 This will be as faithful a recreation of WordleBot as possible, taking into account the priors found from its client side-code and using all the information about it on the FAQ, such as the following:
@@ -155,14 +159,14 @@ I got the following results:
 
 === REVERSE ENGINEERING METRICS ===
 Total True NYT Targets:       3209
-Total Predicted Solutions:    3412
-Targets Successfully Captured:2785 (86.8%)
-Missed Targets:               424
+Total Predicted Solutions:    3424
+Targets Successfully Captured:2765 (86.2%)
+Missed Targets:               444
 
 === PRIORS BREAKDOWN ===
-High-Prior Targets Captured: 2066 / 2110 (97.9%)
-Low-Prior Targets Captured:  719 / 1099 (65.4%)
-Valid '-ed' Targets Captured: 200 / 258 (77.5%)
+High-Prior Targets Captured: 2064 / 2110 (97.8%)
+Low-Prior Targets Captured:  701 / 1099 (63.8%)
+Valid '-ed' Targets Captured: 199 / 258 (77.1%)
 
 This is good, a high result in the low-prior category would imply overfitting.
 I then made the 4500 word list by taking the 3209 and adding the most common 1291 words according to the model.
@@ -280,13 +284,13 @@ Here is a benchmark based on past solutions:
 --- PAST WORDLE SOLUTIONS BENCHMARK ---
 Split                       Total_Words Avg_Guesses Win_Rate  Max_Guesses
             NYT Era (2022)  81          3.4444      100.00%  5           
-            NYT Era (2023) 365          3.3863      100.00%  6           
-            NYT Era (2024) 366          3.4781      100.00%  6           
-            NYT Era (2025) 365          3.4767      100.00%  6           
-            NYT Era (2026) 199          3.5025      100.00%  5           
-Original Era (Games 0-479) 480          3.4979      100.00%  5           
+            NYT Era (2023) 365          3.3973      100.00%  6           
+            NYT Era (2024) 366          3.4699      100.00%  6           
+            NYT Era (2025) 365          3.4685      100.00%  6           
+            NYT Era (2026) 199          3.5276      100.00%  5           
+Original Era (Games 0-479) 480          3.4875      100.00%  5           
 -----------------------------------------------------------------
-Overall Past Solutions Avg:      3.4661
+Overall Past Solutions Avg:      3.4650
 Overall Past Solutions Win Rate: 100.00%
 
 The reason why I split at 480 exactly was due to the result of this analysis comparing the two sets of priors (seen vs unseen) I found on the NYT website.
@@ -330,9 +334,9 @@ For thoroughness, I also ran the averages for each list of words we have:
 
 --- BOT SUMMARY AVERAGES ---
 Dataset                          Count Unweighted Avg Weighted Avg
-All 15k Words (Full Dictionary) 14855  4.5435            N/A      
-                Top 4,500 Words  4500  3.7962         3.5300      
- NYT Target List (~3,200 Words)  3209  3.6201         3.5288   
+All 15k Words (Full Dictionary) 14855  4.5449            N/A      
+                Top 4,500 Words  4500  3.7980         3.5299      
+ NYT Target List (~3,200 Words)  3209  3.6189         3.5287    
 
 The high average for the 15k is because the bot ignores all words outside the 4500 until it's otherwise impossible, leading to a spike in average guesses.
 As it turns out, every single Wordle solution has been in the 3209 word list:
@@ -340,9 +344,9 @@ As it turns out, every single Wordle solution has been in the 3209 word list:
 --- PAST SOLUTIONS: OOF MODEL RANK & LIST INCLUSION ---
 Total Past Answers Analyzed: 1,856
 
-Top 1,000 Ranked:  632  ( 34.1%)
-Top 2,000 Ranked: 1145  ( 61.7%)
-Top 3,000 Ranked: 1520  ( 81.9%)
+Top 1,000 Ranked:  628  ( 33.8%)
+Top 2,000 Ranked: 1121  ( 60.4%)
+Top 3,000 Ranked: 1507  ( 81.2%)
 ----------------------------------------------------
 In NYT Target List (~3.2k): 1856  (100.00%)
 In 4,500 Guess List:        1856  (100.00%)
@@ -359,20 +363,103 @@ I ran the full benchmarks on Bot 2 as well (after making it use the priors we cr
 
 --- BOT 2 SUMMARY AVERAGES ---
 Dataset                          Count Unweighted Avg Weighted Avg
-All 15k Words (Full Dictionary) 14855  4.5746            N/A      
-                Top 4,500 Words  4500  3.8082         3.6525      
-   NYT Target List (3209 Words)  3209  3.7102         3.6518      
-  
+All 15k Words (Full Dictionary) 14855  4.5733            N/A      
+                Top 4,500 Words  4500  3.8080         3.6529      
+   NYT Target List (3209 Words)  3209  3.7105         3.6522  
+
 --- PAST WORDLE SOLUTIONS BENCHMARK ---
 Split                       Total_Words Avg_Guesses Win_Rate  Max_Guesses
             NYT Era (2022)  81          3.5802      100.00%  5           
-            NYT Era (2023) 365          3.5562      100.00%  5           
-            NYT Era (2024) 366          3.6257      100.00%  6           
-            NYT Era (2025) 365          3.6329      100.00%  6           
-            NYT Era (2026) 199          3.6784      100.00%  5           
-Original Era (Games 0-479) 480          3.6187      100.00%  5           
+            NYT Era (2023) 365          3.5479      100.00%  5           
+            NYT Era (2024) 366          3.6284      100.00%  6           
+            NYT Era (2025) 365          3.6301      100.00%  6           
+            NYT Era (2026) 199          3.6734      100.00%  5           
+Original Era (Games 0-479) 480          3.6208      100.00%  5           
 -----------------------------------------------------------------
-Overall Past Solutions Avg:      3.6153
+Overall Past Solutions Avg:      3.6137
 Overall Past Solutions Win Rate: 100.00%
 
-As expected, slightly worse than Bot 3 on the past solutions.
+As expected, slightly worse than Bot 3 on all metrics.
+
+My adaptive system will work by adjusting the priors after each recorded solution.
+
+My initial idea for Bot 4 is to create some kind of HMM which estimates the rough frequency of the next day's word.
+However, I assume the solution selection is fairly independent day-to-day so I'm not optimistic.
+To see if this idea will have any merit, I created four hidden states relating to word frequency:
+- Not within NYT's 3200
+- Within NYT's 3200 with a prior < 1
+- Within NYT's 3200 with a prior = 1 but a low ranking with my frequency heuristic
+- Within NYT's 3200 with a prior = 1 but a high ranking with my frequency heuristic
+
+I then found transition matrices:
+
+=== HMM TRANSITIONS: ALL GAMES (0 to Present) ===
+Total sequences analyzed: 1856
+
+Random Chance (Marginal Probabilities):
+  S2: In 3200 (Prior < 1)        12.23%
+  S3: Prior=1 (Lower Half Freq)  38.79%
+  S4: Prior=1 (Upper Half Freq)  48.98%
+
+Transition Matrix (Row = From Day t, Col = To Day t+1):
+hmm_state                     S2: In 3200 (Prior < 1) S3: Prior=1 (Lower Half Freq) S4: Prior=1 (Upper Half Freq)
+hmm_state                                                                                                        
+S2: In 3200 (Prior < 1)                        15.86%                        37.00%                        47.14%
+S3: Prior=1 (Lower Half Freq)                  12.24%                        38.39%                        49.37%
+S4: Prior=1 (Upper Half Freq)                  11.33%                        39.60%                        49.06%
+
+Note that I didn't do a split at game 480 like before.
+Having looked through the priors myself I found no major issues with the unseen priors.
+For whatever reason, WordleBot's seen priors don't account for solutions from the first few hundred games.
+
+These show that the solution choice is essentially independent of the previous day as the transition probabilities closely correspond to the size of the region.
+However, there is a slightly anomalous property that obscure words (those in S2) are more likely to be picked consecutively.
+Hence I decided to investigate this specific transition further:
+
+--- PAST WORDLE SOLUTIONS 'OBSCURENESS HEAT' BY YEAR ---
+Split                Total_Words  Base_Obscure_Rate  Obs_to_Obs_Prob    Obscure_Streaks
+Year 2021            196          18.88%             18.92%             7
+Year 2022            365          10.96%             10.00%             4
+Year 2023            365          9.32%              11.76%             4
+Year 2024            366          8.20%              13.79%             4
+Year 2025            365          14.79%             23.64%             13
+Year 2026            199          16.08%             12.50%             4
+----------------------------------------------------------------------------------------
+Overall Dataset Base Obscure Rate:      12.23%
+Overall Dataset Obs->Obs Transition Prob: 15.86%
+
+However, this volume of obscure streaks is not statistically significant. So I won't consider the HMM idea any longer.
+
+The first time-based improvement I'll make is simply zeroing out the prior of past solutions - this is what Bot 4 does.
+Note this eliminates the bot's ability to solve repeats, so I'll simply restrict my testing time period to before 2026.
+
+Bot 2:
+Split           | Total_Words  | Avg_Guesses  | Max_Guesses  | Failures (>6)
+-------------------------------------------------------------------------------------
+Year 2021       | 196          | 3.6378       | 5            | 0           
+Year 2022       | 365          | 3.6027       | 5            | 0           
+Year 2023       | 365          | 3.5479       | 5            | 0           
+Year 2024       | 366          | 3.6284       | 6            | 0           
+Year 2025       | 364          | 3.6319       | 6            | 0           
+-------------------------------------------------------------------------------------
+Overall         | 1656         | 3.6069       | 6            | 0            
+
+Bot 4:
+Split           | Total_Words  | Avg_Guesses  | Max_Guesses  | Failures (>6)
+-------------------------------------------------------------------------------------
+Year 2021       | 196          | 3.5918       | 5            | 0           
+Year 2022       | 365          | 3.5479       | 6            | 0           
+Year 2023       | 365          | 3.4712       | 6            | 0           
+Year 2024       | 366          | 3.4699       | 5            | 0           
+Year 2025       | 364          | 3.3901       | 5            | 0           
+-------------------------------------------------------------------------------------
+Overall         | 1656         | 3.4843       | 6            | 0                
+
+Unsurprisingly, Bot 4's average decreases significantly over time.
+It is then logical to consider how to improve its early performance.
+I hypothesise that Wordle orginally started using more common words and then over time (for various reasons) the frequency of obscure words increased.
+
+As we know, 
+
+
+

@@ -25,6 +25,11 @@ class BaseBot(ABC):
         """Returns the chosen guess's integer index."""
         pass
 
+    def end_game(self, target_word: str):
+        # Base implementation does nothing.
+        # Future bots will override this to update priors and clear caches.
+        pass
+
 def get_feedback(guess: str, target: str) -> tuple:
     """Standard feedback calculator. 0 = Gray, 1 = Yellow, 2 = Green."""
     feedback = [0] * 5
