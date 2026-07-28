@@ -459,7 +459,82 @@ Unsurprisingly, Bot 4's average decreases significantly over time.
 It is then logical to consider how to improve its early performance.
 I hypothesise that Wordle orginally started using more common words and then over time (for various reasons) the frequency of obscure words increased.
 
-As we know, 
+A key feature about NYT's priors (which is what my system starts with) is that the majority of the 3200 plausible solutions hit a "frequency floor" and have a prior of 1.
+Hence I'll explore a potential reweighting using my frequency heuristic.
 
+I did some testing using the "dynamic frequency" (i.e. the frequency of the word out of remaining unused words).
+After generating some graphs, I found that while the spread in dynamic frequency has decreased over time, this is in line with the shrinking dictionary.
+Also, there were no significant changes at key events in the Wordle timeline, e.g. NYT migration or editor introduction.
+Hence I will not attempt to implement any reweighting mechanisms which rely purely on time.
+
+I will therefore try various prior reweighting functions on the priors which currently have a value of 1.
+I will optimise them on games up to 2024, using 2025 as unseen test data.
+If the 2025 average doesn't increase, I can claim to have improved my system.
+Note I haven't considered 2026 yet as this is when repeats get added.
+
+I will therefore create a multi-parameter reweighting function for the priors.
+NYT has already curated a list of the most 2110 common words, giving them an equal prior of 1.0.
+
+However, ranking these words with my heuristic reveals that more common words within this list are still favoured.
+Based on the findings of these tests I decided to use this reweighting function for the 1.0 words:
+
+For r <= ceil:
+P(r) = 1.0 + alpha
+
+For r > ceil:
+P(r) = 1.0 + alpha * ((N_top - r) / (N_top - ceil))^beta
+
+Where:
+r is the frequency rank of the word out of the top 2110 (by my heuristic)
+alpha corresponds to the maximum prior (assigned to a ceiling similar to the one present already)
+ceil is the number of words in the ceiling
+beta dictates the shape of the reweighting curve
+
+I then did a grid search (took 1 hour) with the following sets:
+alphas = [0.3, 0.7, 1.2]
+ceils = [0, 500, 1000, 1500]
+betas = [0.25, 0.5, 1.0, 2.0]
+
+After doing some analysis on the results I then performed another search with these sets (took 5-6 hours):
+alphas = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75]
+ceils = [500, 750, 1000, 1250, 1500, 1750, 2000, 2110]
+betas = [0.15, 0.3, 0.45, 0.6, 0.75]
+
+The best 10 were the following:
+   (1.25, 1000, 0.15),
+   (1.25, 750, 0.15),
+   (1.25, 1500, 0.45),
+   (1.25, 1750, 0.30),
+   (1.25, 1750, 0.45),
+   (1.25, 1750, 0.60),
+   (1.00, 750, 0.15),
+   (1.25, 500, 0.15),
+   (1.50, 500, 0.15),
+   (1.50, 750, 0.15)
+
+I then tested the 10 best performing sets on 2025 data as well (after running them on past games so their memory worked).
+They all slightly decreased the number of guesses in 2025, which bodes well for not overfitting.
+I used a weighted average (emphasising newer games) to select my new system, settling on this:
+
+Split           | Total  | Avg_Guesses  | Diff_to_Base | Max   | Fails 
+-----------------------------------------------------------------------------------------------
+Year 2021       | 196    | 3.6276       | +0.0357      | 6     | 0     
+Year 2022       | 365    | 3.5123       | -0.0356      | 5     | 0     
+Year 2023       | 365    | 3.4438       | -0.0274      | 6     | 0     
+Year 2024       | 366    | 3.4481       | -0.0219      | 6     | 0     
+Year 2025       | 365    | 3.3808       | -0.0082      | 5     | 0     
+Year 2026       | 31     | 3.4516       | +0.0323      | 5     | 0     
+-----------------------------------------------------------------------------------------------
+2025-26 (Comb)  | 396    | 3.3864       | -0.0051      | 5     | 0     
+-----------------------------------------------------------------------------------------------
+Raw Overall     | 1688   | 3.4674       | -0.0154      | 6     | 0     
+WEIGHTED METRIC | -      | 3.4270       | -0.0132      | -     | -     
+
+The baseline is Bot 4 running on the original priors. The parameter set was (1.50, 750, 0.15).
+
+The next feature to add is the ability to handle repeats, though I wanted to test if these improvements were reflected in the more capable system.
+Hence the creation of Bot 5, essentially Bot 3's turn logic with Bot 4's memory system.
+
+Here are
 
 

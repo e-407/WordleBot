@@ -5,35 +5,41 @@ from pathlib import Path
 from base_bot import BaseBot
 
 class Bot4(BaseBot):
-    def __init__(self, all_words: list, priors_path: str, feedback_matrix, guess_to_idx: dict, target_to_idx: dict, turn2_cache_path: str = None):
+    def __init__(self, all_words: list, priors_path: str = None, priors_dict: dict = None, 
+                 feedback_matrix=None, guess_to_idx: dict = None, target_to_idx: dict = None, 
+                 turn2_cache_path: str = None):
         super().__init__(all_words, feedback_matrix, guess_to_idx, target_to_idx)
         self.name = "Bot 4 (1-Turn Entropy, Perfect Memory)"
         self.idx_to_guess = {v: k for k, v in self.guess_to_idx.items()}
         
-        # --- Robust CSV Prior Loading ---
-        df_priors = pd.read_csv(priors_path)
-        try:
-            float(df_priors.columns[1])
-            df_priors = pd.read_csv(priors_path, header=None)
-        except ValueError:
-            pass
+        # --- Prior Loading: Accept Dict directly or load from CSV ---
+        if priors_dict is not None:
+            self.priors = priors_dict.copy()
+        elif priors_path is not None:
+            df_priors = pd.read_csv(priors_path)
+            try:
+                float(df_priors.columns[1])
+                df_priors = pd.read_csv(priors_path, header=None)
+            except ValueError:
+                pass
+                
+            words = df_priors.iloc[:, 0].astype(str).str.strip().str.lower()
+            priors = pd.to_numeric(df_priors.iloc[:, 1], errors='coerce').fillna(0.0)
+            self.priors = dict(zip(words, priors))
+        else:
+            raise ValueError("Must provide either priors_path or priors_dict")
             
-        words = df_priors.iloc[:, 0].astype(str).str.strip().str.lower()
-        priors = pd.to_numeric(df_priors.iloc[:, 1], errors='coerce').fillna(0.0)
-        self.priors = dict(zip(words, priors))
-        
         # Initial matrix build
         self._rebuild_valid_guesses()
 
-        # --- Internal Caches ---
+        # Internal Caches
         self.turn2_cache_path = turn2_cache_path
         self.turn2_cache = {}
         if self.turn2_cache_path and Path(self.turn2_cache_path).exists():
             with open(self.turn2_cache_path, 'r') as f:
                 self.turn2_cache = json.load(f)
                 
-        self.mid_game_cache = {} # Persistent in-memory cache
-
+        self.mid_game_cache = {}
         self.reset()
 
     def _rebuild_valid_guesses(self):

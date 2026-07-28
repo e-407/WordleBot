@@ -14,7 +14,8 @@ from engine import GameEngine
 
 # from bot2 import Bot2 as ActiveBot
 # from bot3 import Bot3 as ActiveBot
-from bot4 import Bot4 as ActiveBot
+# from bot4 import Bot4 as ActiveBot
+from bot5 import Bot5 as ActiveBot
 
 def run_chronological_evaluation():
     print("Initializing Engine...")
@@ -37,7 +38,7 @@ def run_chronological_evaluation():
     years = df_past['year'].tolist()
     
     # --- NEW: LIMIT TEST LENGTH ---
-    MAX_GAMES = 1656  # Set to None to run all games
+    MAX_GAMES = None
     if MAX_GAMES is not None:
         targets_to_run = targets_to_run[:MAX_GAMES]
         years = years[:MAX_GAMES]
@@ -49,6 +50,7 @@ def run_chronological_evaluation():
     bot = ActiveBot(
         all_words=list(engine.guess_to_idx.keys()),
         priors_path=priors_file,
+        priors_dict=None,
         feedback_matrix=engine.feedback_matrix,
         guess_to_idx=engine.guess_to_idx,
         target_to_idx=engine.target_to_idx,
@@ -103,9 +105,23 @@ def run_chronological_evaluation():
             bot.end_game(target_word)
         
         # Log Progress
-        if game_idx % 100 == 0:
+        should_print = (
+            (game_idx <= 100) or
+            (game_idx <= 1000 and game_idx % 10 == 0) or
+            (game_idx % 100 == 0) or
+            (game_idx == total_games)
+        )
+
+        if should_print:
             elapsed = time.time() - start_time
-            print(f"[{game_idx:>4}/{total_games}] Evaluated  |  Time: {elapsed/60:.2f} min")
+            remaining_games = total_games - game_idx
+            eta_seconds = (elapsed / game_idx) * remaining_games
+            
+            print(
+                f"[{game_idx:>4}/{total_games}] Evaluated  |  "
+                f"Elapsed: {elapsed/60:.2f} min  |  "
+                f"ETA: {eta_seconds/60:.2f} min"
+            )
 
     # Generate Summary Statistics
     df_results = pd.DataFrame(results)
