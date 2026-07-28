@@ -535,6 +535,24 @@ The baseline is Bot 4 running on the original priors. The parameter set was (1.5
 The next feature to add is the ability to handle repeats, though I wanted to test if these improvements were reflected in the more capable system.
 Hence the creation of Bot 5, essentially Bot 3's turn logic with Bot 4's memory system.
 
-Here are
+Here are the results of running Bot 5 of NYT's priors:
+
+Split           | Total_Words  | Avg_Guesses  | Max_Guesses  | Failures (>6)
+-------------------------------------------------------------------------------------
+Year 2021       | 196          | 3.5000       | 5            | 0           
+Year 2022       | 365          | 3.3890       | 5            | 0           
+Year 2023       | 365          | 3.2959       | 6            | 0           
+Year 2024       | 366          | 3.2787       | 5            | 0           
+Year 2025       | 365          | 3.1918       | 5            | 0           
+Year 2026       | 199          | 3.3015       | 6            | 0           
+-------------------------------------------------------------------------------------
+Overall         | 1856         | 3.3125       | 6            | 0  
+
+rpeeats
+
+
+And here the results of running Bot 5 on my reweighted priors:
+
+
 
 

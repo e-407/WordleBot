@@ -23,9 +23,10 @@ def run_chronological_evaluation():
     
     # Define file paths
     bot_class_name = ActiveBot.__name__.lower()
-    priors_file = str(PROJECT_ROOT / 'data' / 'priors_4500.csv')
+    # priors_file = str(PROJECT_ROOT / 'data' / 'priors_4500.csv')
+    priors_file = str(PROJECT_ROOT / 'data' / 'priors_reweighted.csv')
     past_answers_file = PROJECT_ROOT / 'data' / 'past_answers.csv'
-    output_csv = PROJECT_ROOT / 'data' / f'{bot_class_name}_chronological_results.csv'
+    output_csv = PROJECT_ROOT / 'data' / f'{bot_class_name}_chronological_results_2.csv'
     
     if not past_answers_file.exists():
         print(f"Error: Could not find {past_answers_file}")
