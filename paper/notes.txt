@@ -531,6 +531,8 @@ Raw Overall     | 1688   | 3.4674       | -0.0154      | 6     | 0
 WEIGHTED METRIC | -      | 3.4270       | -0.0132      | -     | -     
 
 The baseline is Bot 4 running on the original priors. The parameter set was (1.50, 750, 0.15).
+I then created a set of 4500 reweighted priors.
+I also reduced the minimum non-zero value of 0.003896 to 0.001 to reduce the probability mass in the tail as none of these words have ever been chosen.
 
 The next feature to add is the ability to handle repeats, though I wanted to test if these improvements were reflected in the more capable system.
 Hence the creation of Bot 5, essentially Bot 3's turn logic with Bot 4's memory system.
@@ -559,7 +561,113 @@ Year 2024       | 366          | 3.2514       | 5            | 0
 Year 2025       | 365          | 3.1644       | 5            | 0           
 Year 2026       | 199          | 3.2814       | 6            | 0           
 -------------------------------------------------------------------------------------
-Overall         | 1856         | 3.2926       | 6            | 0           
+Overall         | 1856         | 3.2926       | 6            | 0        
+
+The spike in 2026 is due to the repeated solutions - the bot has them at priors of 0 so exhausts the full 4500 first.
+After filtering out the repeats in 2026 I did some statistical testing:
+
+============================================================
+--- STATISTICAL SIGNIFICANCE: ALL UNIQUE TARGETS ---
+============================================================
+Total Unique Targets Evaluated: 1,838
+Net Guesses Saved:              40
+Games Improved (+1+):           210
+Games Worsened (-1+):           170
+Games Identical:                1458
+------------------------------------------------------------
+Paired t-test p-value:          0.046554
+Wilcoxon p-value:               0.046746
+Significant at alpha = 0.05?    YES (Statistically Significant)
+============================================================
+
+============================================================
+--- STATISTICAL SIGNIFICANCE: 2023 ONWARDS ONLY ---
+============================================================
+Total Unique Targets Evaluated: 1,277
+Net Guesses Saved:              37
+Games Improved (+1+):           150
+Games Worsened (-1+):           113
+Games Identical:                1014
+------------------------------------------------------------
+Paired t-test p-value:          0.028903
+Wilcoxon p-value:               0.029206
+Significant at alpha = 0.05?    YES (Statistically Significant)
+============================================================
+
+Hence I can claim my new priors have improved my system, both since the NYT acquisition and since Wordle's beginning.
+The next logical step (and the final part of my project for now) is to protect the system against repeat guesses.
+However, this was only a recent introduction, so there is little data to base the system adjustment on.
+
+Some time has passed since I begun this project so I have since added 10 more days of solution data.
+
+My first idea is to have a running probability of a certain day being a repeat.
+Perhaps an initial estimate (10%) which then gets gradually updated based on whether a day's word was unique.
+I will probably make the system use some form of exponential weighting once enough time has passed.
+This effect may be possible by using a formula which simply adjusts the probability value of the previous day.
+
+This treats repeats as independent events unrelated to when the last repeat was.
+However, after doing some statistical testing I found that this may not be the case:
+
+============================================================
+1. INTER-ARRIVAL GAP SPACING TEST
+============================================================
+Mean Gap Between Repeats : 9.47 games
+Std Dev of Gaps          : 3.78 games
+Coefficient of Var (CV)  : 0.399
+--> RESULT: Gaps are MORE EVENLY SPACED than pure random chance (CV < 1.0).
+
+============================================================
+2. KOLMOGOROV-SMIRNOV UNIFORMITY TEST
+============================================================
+KS Statistic : 0.0979
+p-value      : 0.9884
+--> RESULT: Fail to reject Null Hypothesis. 2nd instances look uniformly random over time.
+
+============================================================
+3. EXPONENTIAL DISTRIBUTION GAP TEST
+============================================================
+KS Statistic : 0.2925
+p-value      : 0.0877
+--> RESULT: Gaps are consistent with a memoryless random process.
+
+Test 1 indicates that the spacing is suspiciously even, Test 2 failing just means the repeats aren't overly clustered and Test 3 only failed marginally.
+
+Hence I will create two systems, the first one with the independent assumption. This will be Bot 6, based off Bot 5.
+I decided to use a simple exponential average to track the probability of a repeat, with an initial value of 10%, based on my knowledge of how frequent repeats have been.
 
 
 
+
+
+
+# Potential future improvements
+
+A further consideration is the likelihood of specific words being repeated.
+
+FULL LIST OF REPEATED SOLUTIONS (18 Total Repeats Found)
+================================================================================
+ Word  1st Game #   1st Date  2nd Game #   2nd Date  Gap (Games)
+cigar           0 2021-06-19        1689 2026-02-02         1689
+awake           4 2021-06-23        1708 2026-02-21         1704
+grade          15 2021-07-04        1730 2026-03-15         1715
+linen          51 2021-08-09        1718 2026-03-03         1667
+stand          57 2021-08-15        1765 2026-04-19         1708
+ivory          59 2021-08-17        1742 2026-03-27         1683
+stout          65 2021-08-23        1850 2026-07-13         1785
+agree          70 2021-08-28        1797 2026-05-21         1727
+thumb         115 2021-10-12        1814 2026-06-07         1699
+comet         122 2021-10-19        1745 2026-03-30         1623
+clock         160 2021-11-26        1788 2026-05-12         1628
+bring         164 2021-11-30        1778 2026-05-02         1614
+break         172 2021-12-08        1819 2026-06-12         1647
+baton         183 2021-12-19        1840 2026-07-03         1657
+acute         190 2021-12-26        1833 2026-06-26         1643
+squad         296 2022-04-11        1704 2026-02-17         1408
+smile         830 2023-09-27        1806 2026-05-30          976
+sandy        1226 2024-10-27        1750 2026-04-04          524
+
+The vast majority of repeats were very early solutions (with a couple of outliers).
+
+The original vision for this project was that the priors would adapt based on the kind of words that were solutions, not just zeroing out repeats.
+Perhaps a version where the system retrains itself (similar to the process of finding the new priors for Bot 5) every month or so.
+However, I've dedicated enough time to this already and need to do some quant interview prep as I've done none.
