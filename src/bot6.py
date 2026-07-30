@@ -87,10 +87,11 @@ class Bot6(Bot5):
             self.repeat_prob = (1 - self.alpha) * self.repeat_prob + self.alpha * indicator
 
         if is_repeat:
-            # Word was repeated! Remove it from the used pool and fix base prior to 0.001
-            # so it is now considered alongside the non-repeated (unused) words.
+            # Word was repeated! Remove it from the used pool so it doesn't get
+            # second-time repeat probability. Assign an ultra-low epsilon prior
+            # so it is only guessed as an absolute last resort.
             self.used_words.remove(target_word)
-            self.original_priors[target_word] = 0.001
+            self.original_priors[target_word] = 1e-7
         else:
             # First time seen. Add to used words.
             if target_word not in self.original_priors:
