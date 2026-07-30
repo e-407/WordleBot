@@ -9,7 +9,7 @@ if str(SRC_DIR) not in sys.path:
     sys.path.append(str(SRC_DIR))
 
 from engine import GameEngine
-from bot7 import Bot7  # ADAPTED: Importing Bot7 instead of Bot6
+from bot8 import Bot8  # ADAPTED: Importing Bot8 (Pure Lorentzian Version)
 
 def run_repeat_era_evaluation():
     print("Initializing Engine & Loading Data...")
@@ -19,7 +19,8 @@ def run_repeat_era_evaluation():
     past_answers_file = PROJECT_ROOT / 'data' / 'past_answers.csv'
     bot5_results_file = PROJECT_ROOT / 'data' / 'bot5_chronological_results_2.csv'
     bot6_results_file = PROJECT_ROOT / 'data' / 'bot6_chronological_results.csv'
-    bot7_results_file = PROJECT_ROOT / 'data' / 'bot7_chronological_results.csv'  # ADAPTED: Dedicated Bot 7 export
+    bot7_results_file = PROJECT_ROOT / 'data' / 'bot7_chronological_results.csv'
+    bot8_results_file = PROJECT_ROOT / 'data' / 'bot8_chronological_results.csv'  # ADAPTED: Dedicated Bot 8 export
     
     if not past_answers_file.exists():
         print(f"Error: Could not find {past_answers_file}")
@@ -43,7 +44,7 @@ def run_repeat_era_evaluation():
         
     print(f"Repeat Era detected starting at game index {repeat_era_start_idx} (Target: {targets_to_run[repeat_era_start_idx]})")
     
-    # 2. Extract Bot 5 and Bot 6 baselines for the exact same era
+    # 2. Extract Bot 5, Bot 6, and Bot 7 baselines for the exact same era
     bot5_avg = None
     if Path(bot5_results_file).exists():
         bot5_df = pd.read_csv(bot5_results_file)
@@ -57,9 +58,15 @@ def run_repeat_era_evaluation():
         bot6_avg = bot6_df['guess_count'].mean()
         print(f"Bot 6 Average for this era: {bot6_avg:.4f}")
 
-    # 3. Initialize Bot 7
-    print("\nInitializing Bot 7...")
-    bot = Bot7(
+    bot7_avg = None
+    if Path(bot7_results_file).exists():
+        bot7_df = pd.read_csv(bot7_results_file)
+        bot7_avg = bot7_df['guess_count'].mean()
+        print(f"Bot 7 Average for this era: {bot7_avg:.4f}")
+
+    # 3. Initialize Bot 8 (Pure Lorentzian Version)
+    print("\nInitializing Bot 8 (Pure Lorentzian Kernel)...")
+    bot = Bot8(
         all_words=list(engine.guess_to_idx.keys()),
         priors_path=priors_file,
         feedback_matrix=engine.feedback_matrix,
@@ -67,21 +74,25 @@ def run_repeat_era_evaluation():
         target_to_idx=engine.target_to_idx,
         starting_repeat_prob=0.10,
         alpha=0.01,
-        alpha_g=0.10,       # ADAPTED: Gap smoothing parameter
-        L=0.1,              # ADAPTED: Lower bound multiplier
-        U=1.9,              # ADAPTED: Upper bound cap
-        initial_g_bar=9.47  # ADAPTED: Starting mean gap
+        alpha_g=0.10,       # Gap smoothing parameter (from Bot 7)
+        L=0.1,              # Lower bound multiplier (from Bot 7)
+        U=1.9,              # Upper bound cap (from Bot 7)
+        initial_g_bar=9.47, # Starting mean gap (from Bot 7)
+        c_lorentz=100.0     # ADAPTED: Lorentzian scale parameter (Game 0-100 plateau)
     )
     
-    # 4. Fast-forward Bot 7's memory to the start of the repeat era
-    print("Fast-forwarding Bot 7 memory to the start of the Repeat Era...")
-    for w in targets_to_run[:repeat_era_start_idx]:
-        # update_ema=False because repeats weren't a game mechanic yet
+    # 4. Fast-forward Bot 8's memory to the start of the repeat era
+    #    We explicitly log origin game numbers (x) so the Lorentzian kernel works immediately.
+    print("Fast-forwarding Bot 8 memory & timestamping origins to the start of the Repeat Era...")
+    for i, w in enumerate(targets_to_run[:repeat_era_start_idx]):
+        bot.current_game_number = i
+        bot.used_word_game_num[w] = i
         bot.end_game(w, update_ema=False)
+        
+    bot.current_game_number = repeat_era_start_idx
         
     # 5. Play out the Repeat Era
     print("\nStarting Repeat Era Gameplay...\n" + "-" * 95)
-    # ADAPTED: Expanded table headers to display timing metrics and both probabilities
     print(f"{'Game #':<8} | {'Target':<8} | {'Guesses':<24} | {'Count':<5} | {'Rep?':<5} | {'Gap (d)':<7} | {'G_bar':<6} | {'P(Adjusted)':<11}")
     print("-" * 95)
     
@@ -115,7 +126,7 @@ def run_repeat_era_evaluation():
             
         guess_count = len(guesses_made)
         
-        # End of Game Hook - Bot 7 returns (is_repeat, timing_adjusted_repeat_prob)
+        # End of Game Hook - Bot 8 returns (is_repeat, timing_adjusted_repeat_prob)
         is_repeat, new_adjusted_prob = bot.end_game(target_word, update_ema=True)
         
         results.append({
@@ -125,9 +136,9 @@ def run_repeat_era_evaluation():
             "guess_count": guess_count,
             "failed": guess_count > 6,
             "is_repeat": is_repeat,
-            "days_since_last": current_gap,             # ADAPTED: Logged gap
-            "g_bar": round(current_g_bar, 2),           # ADAPTED: Logged mean gap
-            "base_ema_prob": round(bot.repeat_prob, 6), # ADAPTED: Logged Bot 6 base EMA
+            "days_since_last": current_gap,
+            "g_bar": round(current_g_bar, 2),
+            "base_ema_prob": round(bot.repeat_prob, 6),
             "adjusted_prob": round(new_adjusted_prob, 6)
         })
         
@@ -140,18 +151,23 @@ def run_repeat_era_evaluation():
         print(f"{game_idx:<8} | {target_word:<8} | {guess_str:<24} | {guess_count:<5} | {repeat_str:<5} | {current_gap:<7} | {current_g_bar:<6.2f} | {new_adjusted_prob:.4f}")
 
     # 6. Final Report
-    df_bot7 = pd.DataFrame(results)
-    df_bot7.to_csv(bot7_results_file, index=False)
+    df_bot8 = pd.DataFrame(results)
+    df_bot8.to_csv(bot8_results_file, index=False)
     
     print("-" * 95)
-    print(f"Results exported to: {bot7_results_file}")
+    print(f"Results exported to: {bot8_results_file}")
     
-    era_avg = df_bot7['guess_count'].mean()
+    era_avg = df_bot8['guess_count'].mean()
     
     print("\n=== REPEAT ERA SUMMARY ===")
     print(f"Total Games Played : {len(results)}")
-    print(f"Bot 7 Average      : {era_avg:.4f}")
+    print(f"Bot 8 Average      : {era_avg:.4f}")
     
+    if bot7_avg:
+        diff_7 = era_avg - bot7_avg
+        sign_7 = "+" if diff_7 > 0 else ""
+        print(f"Bot 7 Average      : {bot7_avg:.4f} (Net vs Bot 7: {sign_7}{diff_7:.4f})")
+
     if bot6_avg:
         diff_6 = era_avg - bot6_avg
         sign_6 = "+" if diff_6 > 0 else ""
