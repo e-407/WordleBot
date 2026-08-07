@@ -152,7 +152,7 @@ def run_repeat_era_evaluation():
 
     # 6. Final Report
     df_bot8 = pd.DataFrame(results)
-    df_bot8.to_csv(bot8_results_file, index=False)
+    #df_bot8.to_csv(bot8_results_file, index=False)
     
     print("-" * 95)
     print(f"Results exported to: {bot8_results_file}")

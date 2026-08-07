@@ -178,3 +178,11 @@ game_num,target,guesses,guess_count,failed,is_repeat,repeat_prob
 1865,sonar,slate-garbo-sonar,3,False,False,0.0954740815834703
 1866,valve,slate-vapid-valve,3,False,False,0.094519
 1867,flume,slate-oldie-plebe-fluke-flume,5,False,True,0.103574
+1868,purse,slate-proud-purse,3,False,False,0.1025384058863596
+1869,slush,slate-noisy-slush,3,False,False,0.101513021827496
+1870,penal,slate-renal-penal,3,False,False,0.100497891609221
+1871,reply,slate-oiler-reply,3,False,False,0.0994929126931288
+1872,motif,slate-timon-motif,3,False,False,0.0984979835661975
+1873,posit,slate-burst-posit,3,False,False,0.0975130037305356
+1874,gripe,slate-crump-grope-gripe,4,False,True,0.1065378736932302
+1875,feign,slate-doper-geeky-begun-feign,5,False,True,0.11547249495629794

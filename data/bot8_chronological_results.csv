@@ -178,3 +178,11 @@ game_num,target,guesses,guess_count,failed,is_repeat,days_since_last,g_bar,base_
 1865,sonar,slate-garbo-sonar,3,False,False,15,9.22,0.095474,0.166315
 1866,valve,slate-vapid-valve,3,False,False,16,9.22,0.094519,0.174999
 1867,flume,slate-clime-flume,3,False,True,17,9.22,0.103574,0.010357
+1868,purse,slate-proud-purse,3,False,False,1,10.0,0.102538,0.020508
+1869,slush,slate-hokum-slush,3,False,False,2,10.0,0.101513,0.030455
+1870,penal,slate-renal-penal,3,False,False,3,10.0,0.100498,0.040201
+1871,reply,slate-oiler-reply,3,False,False,4,10.0,0.099493,0.049748
+1872,motif,slate-pinot-motif,3,False,False,5,10.0,0.098498,0.059101
+1873,posit,slate-burst-posit,3,False,False,6,10.0,0.097513,0.068262
+1874,gripe,slate-crump-grope-gripe,4,False,True,7,10.0,0.106538,0.010654
+1875,feign,slate-doper-geeky-begin-feign,5,False,True,1,9.7,0.115472,0.011547

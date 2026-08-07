@@ -266,6 +266,10 @@ def update_bots():
 
         # --- Play Bot 8 ---
         if game_idx >= start_indices["b8"]:
+            if "feign" in engine.target_to_idx:
+                    recorded_origin = bot8.used_word_game_num.get("feign", 0)
+                    print(f"[DEBUG] Game {game_idx} | feign origin in Bot8 memory: {recorded_origin}")
+
             bot8.reset()
             b8_guesses = []
             b8_gap_before = bot8.days_since_last
