@@ -74,6 +74,12 @@ After refining Bot 3 to use expected guesses with a two-turn lookahead (and then
 This is now extremely close to WordleBot's suggestions. At the moment the bot looks at the 50 candidates with highest entropy or most probable solutions.
 However, it still only guesses words with non-zero priors. Hence we'll try to recreate WordleBot's 4500 word guess list.
 
+Note that Bot3 uses an entropy heuristic. It assumes that the remaining guesses for a bucket is roughly 0.45*lg(N).
+This is a value found in other Wordle bots I've come across.
+It is derived from the idea that a good bot should be able to gain 2.2 bits of entropy per guess at that stage.
+I did some testing, examining WordleBot's analysis for a game where PATCH was the solution, and this heuristic aligned with its expected guesses calculations.
+Additionally, this shows WordleBot doesn't run on a full decision tree.
+
 In my search to find the 4500 word list, I stumbled upon the list of priors for the version of WordleBot which doesn't take past solutions into account.
 It turns out this is identical to the list I found on Wordle Tools.
 
@@ -182,7 +188,6 @@ The refined Bot 3 using the unseen priors gave:
 
 Again, similarities to the bot but actual performance differences can't be seen here.
 Before bulk testing I decided to optimise Bot 3 further and add some speed tests as performance is currently slow.
-I suspect NYT's WordleBot runs using a precomputed decision tree, which is infeasible for me to compute.
 Before further optimisations the speed tests gave:
 
 Turn 1: SLATE (Hardcoded -> 0.00 ms)
@@ -275,8 +280,7 @@ I then generated and uploaded a screenshot of each game and gave it to WordleBot
 With the exception of the second guess for TAUNT, SWORN, FREAK and PIECE (given scores of 98), the guesses all received a 99 skill rating.
 Performance differed for LINER where WordleBot correctly guessed the 50/50 but Bot 3 didn't.
 While I haven't definitively proved it, I am confident that my bot is very close in ability to NYT's.
-After all, NYT's bot isn't perfect and mine could be slightly better (though this is unlikely as NYT's presumably runs off a decision tree).
-I didn't bother comparing expected guesses as my heuristic probably isn't accurate enough and running full decision trees is too expensive.
+After all, NYT's bot isn't perfect and mine could be slightly better.
 
 I then did some performance testing on Bot 3, running it on every word in the allowed guesses for thoroughness.
 Here is a benchmark based on past solutions:
@@ -598,7 +602,7 @@ Hence I can claim my new priors have improved my system, both since the NYT acqu
 The next logical step (and the final part of my project for now) is to protect the system against repeat guesses.
 However, this was only a recent introduction, so there is little data to base the system adjustment on.
 
-Some time has passed since I begun this project so I have since added 10 more days of solution data.
+Some time has passed since I begun this project so I have since added some more days of solution data.
 
 My first idea is to have a running probability of a certain day being a repeat.
 Perhaps an initial estimate (10%) which then gets gradually updated based on whether a day's word was unique.
@@ -611,23 +615,23 @@ However, after doing some statistical testing I found that this may not be the c
 ============================================================
 1. INTER-ARRIVAL GAP SPACING TEST
 ============================================================
-Mean Gap Between Repeats : 9.89 games
-Std Dev of Gaps          : 4.07 games
-Coefficient of Var (CV)  : 0.412
+Mean Gap Between Repeats : 9.30 games
+Std Dev of Gaps          : 4.37 games
+Coefficient of Var (CV)  : 0.469
 --> RESULT: Gaps are MORE EVENLY SPACED than pure random chance (CV < 1.0).
 
 ============================================================
 2. KOLMOGOROV-SMIRNOV UNIFORMITY TEST
 ============================================================
-KS Statistic : 0.0784
-p-value      : 0.9991
+KS Statistic : 0.0947
+p-value      : 0.9824
 --> RESULT: Fail to reject Null Hypothesis. 2nd instances look uniformly random over time.
 
 ============================================================
 3. EXPONENTIAL DISTRIBUTION GAP TEST
 ============================================================
-KS Statistic : 0.2858
-p-value      : 0.0856
+KS Statistic : 0.2789
+p-value      : 0.0722
 --> RESULT: Gaps are consistent with a memoryless random process.
 
 Test 1 indicates that the spacing is suspiciously even, Test 2 failing just means the repeats aren't overly clustered and Test 3 only failed marginally.
@@ -642,9 +646,9 @@ Once a word is repeated twice, it is deemed extremely unlikely to appear again, 
 The results of testing Bot 6 on the repeat-word era of Wordle are as follows:
 Category           | Games  | Bot 5 Avg  | Bot 6 Avg  | Diff (B6 - B5)
 ----------------------------------------------------------------------
-Overall Era        | 179    | 3.2793     | 3.1844     | -0.0950       
-Repeats Only       | 19     | 4.6842     | 3.9474     | -0.7368       
-Non-Repeats Only   | 160    | 3.1125     | 3.0938     | -0.0187   
+Overall Era        | 188    | 3.2872     | 3.1915     | -0.0957       
+Repeats Only       | 21     | 4.7143     | 4.0000     | -0.7143       
+Non-Repeats Only   | 167    | 3.1078     | 3.0898     | -0.0180   
 
 The improvement on the non-repeats is likely just statistical noise.
 #NOTE THIS ISN'T ALL NEW GAMES BECAUSE BOT 5 HASN'T BEEN RUN ON THE NEWEST ONES
@@ -665,20 +669,22 @@ G is the expected number of days between repeats, determined by an exponential a
 Running Bot 7 on the repeat era gave this:
 Category           | Games  | Bot 5 Avg  | Bot 6 Avg  | Bot 7 Avg  | Diff (B6-B5)  | Diff (B7-B5) 
 --------------------------------------------------------------------------------------------------
-Overall Era        | 179    | 3.2793     | 3.1844     | 3.1788     | -0.0950       | -0.1006      
-Repeats Only       | 19     | 4.6842     | 3.9474     | 3.8947     | -0.7368       | -0.7895      
-Non-Repeats Only   | 160    | 3.1125     | 3.0938     | 3.0938     | -0.0187       | -0.0187        
+Overall Era        | 188    | 3.2872     | 3.1915     | 3.1809     | -0.0957       | -0.1064      
+Repeats Only       | 21     | 4.7143     | 4.0000     | 3.9048     | -0.7143       | -0.8095      
+Non-Repeats Only   | 167    | 3.1078     | 3.0898     | 3.0898     | -0.0180       | -0.0180          
 
-Note while the average was identical to Bot 6, there were individual differences (which cancelled out).
+While the average was almost identical to Bot 6, I still believe my change is an improvement.
 
 A further consideration is the likelihood of specific words being repeated.
 
-FULL LIST OF REPEATED SOLUTIONS (19 Total Repeats Found)
+================================================================================
+FULL LIST OF REPEATED SOLUTIONS (21 Total Repeats Found)
 ================================================================================
  Word  1st Game #   1st Date  2nd Game #   2nd Date  Gap (Games)
 cigar           0 2021-06-19        1689 2026-02-02         1689
 awake           4 2021-06-23        1708 2026-02-21         1704
 grade          15 2021-07-04        1730 2026-03-15         1715
+feign          19 2021-07-08        1875 2026-08-07         1856
 linen          51 2021-08-09        1718 2026-03-03         1667
 stand          57 2021-08-15        1765 2026-04-19         1708
 ivory          59 2021-08-17        1742 2026-03-27         1683
@@ -691,6 +697,7 @@ clock         160 2021-11-26        1788 2026-05-12         1628
 bring         164 2021-11-30        1778 2026-05-02         1614
 break         172 2021-12-08        1819 2026-06-12         1647
 baton         183 2021-12-19        1840 2026-07-03         1657
+gripe         187 2021-12-23        1874 2026-08-06         1687
 acute         190 2021-12-26        1833 2026-06-26         1643
 squad         296 2022-04-11        1704 2026-02-17         1408
 smile         830 2023-09-27        1806 2026-05-30          976
@@ -722,29 +729,50 @@ The results were as follows:
 
 Category           | Games  | Bot 6 Avg  | Bot 7 Avg  | Bot 8 Avg  | Diff (B7-B6)  | Diff (B8-B6) 
 --------------------------------------------------------------------------------------------------
-Overall Era        | 179    | 3.1844     | 3.1788     | 3.1397     | -0.0056       | -0.0447      
-Repeats Only       | 19     | 3.9474     | 3.8947     | 3.5263     | -0.0526       | -0.4211      
-Non-Repeats Only   | 160    | 3.0938     | 3.0938     | 3.0938     | +0.0000       | +0.0000      
+Overall Era        | 188    | 3.1915     | 3.1809     | 3.1436     | -0.0106       | -0.0479      
+Repeats Only       | 21     | 4.0000     | 3.9048     | 3.5714     | -0.0952       | -0.4286      
+Non-Repeats Only   | 167    | 3.0898     | 3.0898     | 3.0898     | +0.0000       | +0.0000           
 
 As hoped, the reweighting significantly improved performance on the repeats without hindering performance on the non-repeats.
 Then again, this probably isn't statistically significant.
 
-That concludes development for now - I will record NYT's WordleBot's scores for the next few months and compare them to systems 6, 7 and 8.
-I might make a UI to enter the new word each day and WordleBot's scores if I get bored of just running the update_bots script.
+Running the bots to find these results took a significant amount of time, so I checked the code to find any further optimisations.
+I realised that in the second lookahead the bot was still evaluating all 4500 words.
+So I added a filter which works similarly to the one in the first pass (taking highest entropy words and most likely solutions).
 
-Date is 30/7/26
+This was added to Bot 5 (and hence is also applied to its children).
+I then did the repeat era test on bots 5, 6, 7 and 8 to see if there were any behavioural differences.
+All guesses across all bots and games were identical so I decided to keep the change as it gave a decent speedup (turning a 5 hour compute into a 3 hour one).
+
+My next ideas for accuracy improvements stem from the 0.45 heuristic from earlier.
+
+
+
+
+
+
+
+
+
+
+
 
 # Potential future improvements
 
 The original vision for this project was that the priors would adapt based on the kind of words that were solutions, not just zeroing out repeats.
 Perhaps a version where the system retrains itself (similar to the process of finding the new priors for Bot 5) every month or so.
 
-This will probably be Bot 9.
-
 Note there is this information WordleBot from a 2023 article which I haven't considered:
 If words have a different spelling in British and American English — like colour/color and vigour/vigor — the bot considers them a little less likely to be solutions. 
 And the same goes for words that are not classified as root words, like JOWLY.
 The bot also uses how often the word has appeared as a baby name in the United States because — in the roughly 400 Wordle games the bot has seen so far — words that are more likely to be interpreted as names rather than other meanings have been less likely to appear as solutions. (HARRY is one example.)
+Then again this could just already be considered in the NYT priors.
 
 And finally my bots are restricted to only guessing from the 4500 word list.
 Performance would presumably significantly improve if the bot could use any of the 15000 word list.
+
+One major place for improvement could be the heuristic the bots use to calculate the expected guesses after two turns.
+Perhaps a method of reduced search (i.e. only looking at the solutions or very top entropy guesses) after two turns could be used.
+The reason I didn't investigate this further earlier was because the bots already took a lot of time.
+It could be argued that I could have investigated implementing optimisations but I couldn't really see any which would save that much time without risking guess loss.
+(There is already a filter on the words the bot considers which could potentially be impacting performance by a couple of guesses).

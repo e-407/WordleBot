@@ -1,4 +1,5 @@
 import sys
+import time
 import pandas as pd
 from pathlib import Path
 
@@ -50,7 +51,16 @@ def update_bots():
     df_past = pd.read_csv(past_answers_file)
     all_targets = df_past['solution'].tolist()
     
-    # 2. Check existing CSV logs to determine start index individually for each bot
+    # 2. Detect start of Repeat Era FIRST
+    seen = set()
+    repeat_era_start_idx = -1
+    for i, w in enumerate(all_targets):
+        if w in seen:
+            repeat_era_start_idx = i
+            break
+        seen.add(w)
+
+    # 3. Check existing CSV logs to determine start index individually for each bot
     start_indices = {}
     existing_dfs = {}
     
@@ -62,10 +72,11 @@ def update_bots():
             if not df.empty and 'game_num' in df.columns:
                 start_indices[key] = int(df['game_num'].max()) + 1
             else:
-                start_indices[key] = 0
+                # Default empty files: B5 starts at 0, B6-B8 start at Repeat Era
+                start_indices[key] = 0 if key == "b5" else repeat_era_start_idx
         else:
             existing_dfs[key] = pd.DataFrame()
-            start_indices[key] = 0
+            start_indices[key] = 0 if key == "b5" else repeat_era_start_idx
             
         needed = len(all_targets) - start_indices[key]
         bot_label = key.upper()
@@ -77,15 +88,6 @@ def update_bots():
     if all(idx >= len(all_targets) for idx in start_indices.values()):
         print("\nAll bots are already up to date! No execution required.")
         return
-
-    # 3. Detect start of Repeat Era
-    seen = set()
-    repeat_era_start_idx = -1
-    for i, w in enumerate(all_targets):
-        if w in seen:
-            repeat_era_start_idx = i
-            break
-        seen.add(w)
 
     # 4. Initialize Bot Instances
     bot5 = Bot5(
@@ -158,16 +160,22 @@ def update_bots():
     # 6. Play missing games and collect results
     min_start_idx = min(start_indices.values())
     print(f"\nPlaying New Days (Games {min_start_idx} to {len(all_targets)-1})...")
-    print("-" * 125)
+    print("-" * 138)
     header = (
         f"{'Game #':<8} | {'Target':<8} | {'Rep?':<5} | "
         f"{'B5':<5} | {'B6':<5} | {'B7':<5} | {'B8':<5} | "
-        f"{'B6 P(Rep)':<10} | {'B7 P(Adj)':<10} | {'B8 P(Adj)':<10}"
+        f"{'B6 P(Rep)':<10} | {'B7 P(Adj)':<10} | {'B8 P(Adj)':<10} | {'ETA':<8}"
     )
     print(header)
-    print("-" * 125)
+    print("-" * 138)
 
-    new_rows = {k: [] for k in bot_files}
+    start_time = time.time()
+
+    # Helper function to append a row immediately to disk
+    def append_row(bot_key, row_dict):
+        path = bot_files[bot_key]
+        has_content = path.exists() and path.stat().st_size > 0
+        pd.DataFrame([row_dict]).to_csv(path, mode='a', header=not has_content, index=False)
 
     for game_idx in range(min_start_idx, len(all_targets)):
         target_word = all_targets[game_idx]
@@ -178,6 +186,9 @@ def update_bots():
         t_idx = engine.target_to_idx[target_word]
         is_repeat_historical = target_word in all_targets[:game_idx]
         rep_str = "YES" if is_repeat_historical else "NO"
+        
+        # Determine if we are currently in the Repeat Era for EMA updating
+        is_in_repeat_era = (game_idx >= repeat_era_start_idx)
 
         counts = {}
         probs = {}
@@ -196,7 +207,7 @@ def update_bots():
             
             bot5.end_game(target_word)
             
-            new_rows["b5"].append({
+            append_row("b5", {
                 "game_num": game_idx,
                 "year": get_game_year(df_past, game_idx),
                 "target": target_word,
@@ -218,9 +229,9 @@ def update_bots():
                     break
                 bot6.update_state(g_idx, engine.feedback_matrix[g_idx, t_idx])
                 
-            b6_is_rep, b6_new_prob = bot6.end_game(target_word, update_ema=True)
+            b6_is_rep, b6_new_prob = bot6.end_game(target_word, update_ema=is_in_repeat_era)
             
-            new_rows["b6"].append({
+            append_row("b6", {
                 "game_num": game_idx,
                 "target": target_word,
                 "guesses": "-".join(b6_guesses),
@@ -247,9 +258,9 @@ def update_bots():
                     break
                 bot7.update_state(g_idx, engine.feedback_matrix[g_idx, t_idx])
                 
-            b7_is_rep, b7_new_prob = bot7.end_game(target_word, update_ema=True)
+            b7_is_rep, b7_new_prob = bot7.end_game(target_word, update_ema=is_in_repeat_era)
             
-            new_rows["b7"].append({
+            append_row("b7", {
                 "game_num": game_idx,
                 "target": target_word,
                 "guesses": "-".join(b7_guesses),
@@ -268,7 +279,6 @@ def update_bots():
         if game_idx >= start_indices["b8"]:
             if "feign" in engine.target_to_idx:
                     recorded_origin = bot8.used_word_game_num.get("feign", 0)
-                    print(f"[DEBUG] Game {game_idx} | feign origin in Bot8 memory: {recorded_origin}")
 
             bot8.reset()
             b8_guesses = []
@@ -283,9 +293,9 @@ def update_bots():
                     break
                 bot8.update_state(g_idx, engine.feedback_matrix[g_idx, t_idx])
                 
-            b8_is_rep, b8_new_prob = bot8.end_game(target_word, update_ema=True)
+            b8_is_rep, b8_new_prob = bot8.end_game(target_word, update_ema=is_in_repeat_era)
             
-            new_rows["b8"].append({
+            append_row("b8", {
                 "game_num": game_idx,
                 "target": target_word,
                 "guesses": "-".join(b8_guesses),
@@ -300,7 +310,14 @@ def update_bots():
             counts["b8"] = str(len(b8_guesses))
             probs["b8"] = f"{b8_new_prob:.4f}"
 
-        # Format output table line
+        # Format output table line and calculate ETA
+        games_done = game_idx - min_start_idx + 1
+        elapsed = time.time() - start_time
+        avg_time = elapsed / games_done
+        rem_games = len(all_targets) - 1 - game_idx
+        eta_secs = int(avg_time * rem_games)
+        eta_str = f"{eta_secs // 60:02d}:{eta_secs % 60:02d}" if rem_games > 0 else "00:00"
+
         c_b5 = counts.get("b5", "-")
         c_b6 = counts.get("b6", "-")
         c_b7 = counts.get("b7", "-")
@@ -312,20 +329,8 @@ def update_bots():
         print(
             f"{game_idx:<8} | {target_word:<8} | {rep_str:<5} | "
             f"{c_b5:<5} | {c_b6:<5} | {c_b7:<5} | {c_b8:<5} | "
-            f"{p_b6:<10} | {p_b7:<10} | {p_b8:<10}"
+            f"{p_b6:<10} | {p_b7:<10} | {p_b8:<10} | {eta_str:<8}"
         )
-
-    # 7. Append new rows to CSV files matching their exact headers
-    print("-" * 125)
-    for key, file_path in bot_files.items():
-        if new_rows[key]:
-            df_new = pd.DataFrame(new_rows[key])
-            if not existing_dfs[key].empty:
-                df_updated = pd.concat([existing_dfs[key], df_new], ignore_index=True)
-            else:
-                df_updated = df_new
-            df_updated.to_csv(file_path, index=False)
-            print(f"Successfully appended {len(new_rows[key])} new row(s) to: {file_path.name}")
 
 if __name__ == "__main__":
     update_bots()

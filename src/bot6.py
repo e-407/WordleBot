@@ -105,3 +105,25 @@ class Bot6(Bot5):
         self.mid_game_cache.clear()
         
         return is_repeat, self.repeat_prob
+
+    def get_best_guess(self) -> int:
+        # 1. TURN 1: Hardcoded starting word (no cache lookup needed)
+        if self.turn_count == 1:
+            return self.guess_to_idx.get("slate", 0)
+            
+        # 2. 15k FALLBACK: If no active targets remain in prior pool
+        if len(self.active_targets) == 0:
+            best_word = self._get_fallback_guess(self.active_targets_15k)
+            
+        # 3. TURNS 2+: ALWAYS recalculate dynamically (Bypass turn2_cache & mid_game_cache)
+        else:
+            best_word = self.make_guess(self.active_targets)
+
+        # 4. FAILSAFE: Prevent infinite loops naturally
+        if best_word in self.guesses_made:
+            for w in self.active_targets_15k:
+                if w not in self.guesses_made:
+                    best_word = w
+                    break
+
+        return self.guess_to_idx[best_word]

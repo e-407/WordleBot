@@ -107,20 +107,21 @@ class Bot8(Bot7):
     def end_game(self, target_word: str, update_ema: bool = True):
         """
         Lifecycle hook: Tracks first-appearance game numbers for the Lorentzian
-        kernel, handles repeat eviction, and delegates timing/EMA updates to Bot 7.
+        kernel unconditionally, handles repeat eviction, and delegates timing/EMA 
+        updates to Bot 7.
         """
         is_repeat = target_word in self.used_words
         
-        if update_ema:
-            if not is_repeat:
-                # First time this word is chosen: record its origin game index (x)
-                self.used_word_game_num[target_word] = self.current_game_number
-            else:
-                # Eviction: once played a second time, remove from active repeat tracking
-                if target_word in self.used_word_game_num:
-                    del self.used_word_game_num[target_word]
-            
-            self.current_game_number += 1
+        # 1. ALWAYS track game numbers and origin indices (even during update_ema=False warm-up!)
+        if not is_repeat:
+            # First time this word is chosen: record its origin game index (x)
+            self.used_word_game_num[target_word] = self.current_game_number
+        else:
+            # Eviction: once played a second time, remove from active repeat tracking
+            if target_word in self.used_word_game_num:
+                del self.used_word_game_num[target_word]
+        
+        self.current_game_number += 1
 
-        # Let Bot 7 update EMA, timing parameters, pool sets, and call _rebuild_valid_guesses()
+        # 2. Let Bot 7 update EMA, timing parameters, pool sets, and call _rebuild_valid_guesses()
         return super().end_game(target_word, update_ema=update_ema)
