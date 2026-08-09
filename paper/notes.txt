@@ -745,8 +745,54 @@ I then did the repeat era test on bots 5, 6, 7 and 8 to see if there were any be
 All guesses across all bots and games were identical so I decided to keep the change as it gave a decent speedup (turning a 5 hour compute into a 3 hour one).
 
 My next ideas for accuracy improvements stem from the 0.45 heuristic from earlier.
+To do this, we need to examine the actual expected guesses compared to our heuristic.
 
+I ran a script which looks at buckets Bot 8 encountered and then evaluated all of them to find the true expected guesses compared to the heuristic value.
+The "true" value is found by running the bot on every possible solution and calculating the expectation from that.
 
+I made it cycle through the data, doing all the small buckets first.
+Running overnight, it finished the 91-95 word range.
+
+As the first turn is hardcoded, the bot only ever plays games with a few hundred words remaining.
+As the heuristic is run on the buckets these are split into, sampling up to size 95 (and entropy 4.8) is plenty.
+
+I then plot the true expected cost against the estimated cost from my heuristic.
+I noticed that for H<0.5 there was a seemingly linear relationship (far below what was predicted).
+
+This is because buckets with that low entropy are dominated by a single word.
+If p is the likelihood of any word in the bucket we have -p*log2(p)-(1-p)log2(1-p)<0.5
+Which then gives p < 0.110 or p > 0.890.
+Hence any bucket with entropy below 0.5 is dominated by a single high probability word.
+If the words were all unlikely then the entropy would be higher.
+
+In this scenario the optimal strategy is to just guess the likely word.
+If we then assume the optimal strategy afterwards is to continue guess the likely word, the expected guesses is:
+E = p1 + 2*p2 + 3*p3 + 4*p4 ...
+Where pi is the probability of the ith most likely word.
+Using that these probabilities sum to 1 we can find that:
+p2 = 1 - p1 - p3 - p4 ...
+So:
+E = p1 + 2*(1 - p1 - p3 - p4 ...) + 3*p3 + 4*p4 + 5*p5...
+E = (2 - p1) + p3 * 2*p4 + 3*p5 ... 
+So E is roughly 2-p1.
+This approximation is good because the remaining terms are tiny,
+and the initial strategy assumption is fine because this scenario is unlikely anyway.
+
+I was going to hardcode the probability for buckets of size 3, as the optimal strategy is always to guess in sequence.
+This gives E = 2-p1+p3 which means that this is a larger estimate in comparison to larger buckets.
+
+However, all of these estimates assumes that you must guess in sequence. In reality, guessing one word incorrectly may cut down the remaining ones too.
+There are multiple approximations which could be used (e.g. 2-p1, 2-p1+p3, 3-2p1-p2) but for this reason 2-p1 performs the best.
+It underestimates E in this scenario, bringing it closer to the real-life bound.
+Hence for all buckets of size >=3 and H<0.5 I used this approximation.
+
+For H>=0.5 I then used a logarithmic model due to the distribution shape.
+I fixed the point at H=0.5 (estimating p1=0.89) and got the following formula for H>0.5
+
+E = 1.1100 + 0.7049 * ln(1 + 0.9169 * (H - 0.5))
+
+I then created Bot 9, which has all the reweighting behaviours as Bot 8, but changes the heuristics from Bot 5.
+As it is therefore different behaviourally to Bot 5, I ran it on all games starting from the beginning.
 
 
 
