@@ -148,6 +148,7 @@ class Bot5(BaseBot):
 
         return self.guess_to_idx[best_word]
 
+    
     def make_guess(self, active_targets: list) -> str:
         if len(active_targets) == 1:
             return active_targets[0]
@@ -267,6 +268,128 @@ class Bot5(BaseBot):
                     best_g1_word = g1_word
                 
         return best_g1_word
+
+    def get_top_guesses(self, candidates: list, top_n: int = 4, collect_bucket_sizes: bool = False) -> tuple:
+        """
+        Returns (scored_guesses, bucket_sizes_evaluated).
+        If collect_bucket_sizes is True, bucket_sizes_evaluated returns a list 
+        of all sub-bucket sizes N processed by the heuristic for N >= 3.
+        """
+        bucket_sizes = []
+        
+        if len(candidates) == 0:
+            return ([], bucket_sizes) if collect_bucket_sizes else []
+        if len(candidates) == 1:
+            res = [{"word": candidates[0], "skill": 99, "expected_score": 2.0}]
+            return (res, bucket_sizes) if collect_bucket_sizes else res
+            
+        active_t_idxs = np.array([self.target_to_idx[c] for c in candidates if c in self.target_to_idx])
+        if len(active_t_idxs) == 0:
+            return ([], bucket_sizes) if collect_bucket_sizes else []
+            
+        weights = self.prior_weights_target[active_t_idxs]
+        total_weight = np.sum(weights) if np.sum(weights) > 0 else 1.0
+        
+        # Pre-slice valid matrix once to avoid redundant indexing in loop
+        valid_matrix = self.matrix[self.valid_guess_idxs]
+        V = len(self.valid_guess_idxs)
+        row_indices_full = np.arange(V)[:, None]
+        
+        full_sub_matrix = valid_matrix[:, active_t_idxs]
+        
+        weights_m1 = np.zeros((V, 243))
+        np.add.at(weights_m1, (row_indices_full, full_sub_matrix), weights)
+        
+        p_m1 = weights_m1 / (total_weight + 1e-12)
+        entropy_g1 = -np.sum(p_m1 * np.log2(p_m1 + 1e-12), axis=1)
+        
+        candidate_k = 15 if len(candidates) > 100 else 25
+        top_entropy_indices = np.argsort(entropy_g1)[::-1][:candidate_k]
+        top_prob_targets = active_t_idxs[np.argsort(weights)[::-1][:candidate_k]]
+        active_in_valid_indices = np.where(np.isin(self.valid_guess_idxs, top_prob_targets))[0]
+        
+        eval_indices = np.unique(np.concatenate((top_entropy_indices, active_in_valid_indices)))
+        eval_indices = eval_indices[np.argsort(entropy_g1[eval_indices])[::-1]]
+        
+        scored_guesses = []
+        
+        for idx in eval_indices:
+            g1_idx = self.valid_guess_idxs[idx]
+            word = self.idx_to_guess[g1_idx]
+            
+            feedbacks_1 = self.matrix[g1_idx, active_t_idxs]
+            unique_f1 = np.unique(feedbacks_1)
+            
+            expected_turns_g1 = 0.0
+            
+            for f1 in unique_f1:
+                mask = (feedbacks_1 == f1)
+                bucket_t_idxs = active_t_idxs[mask]
+                bucket_weights = weights[mask]
+                bucket_weight_sum = np.sum(bucket_weights)
+                p_bucket = bucket_weight_sum / total_weight
+                
+                if p_bucket < 1e-12:
+                    continue
+                
+                n_bucket = len(bucket_t_idxs)
+                if collect_bucket_sizes:
+                    bucket_sizes.append(n_bucket)
+                
+                if f1 == 242:
+                    turns_needed = 0.0
+                elif n_bucket == 1:
+                    turns_needed = 1.0
+                elif n_bucket == 2:
+                    w_max = np.max(bucket_weights)
+                    w_min = np.min(bucket_weights)
+                    turns_needed = 1.0 * (w_max / bucket_weight_sum) + 2.0 * (w_min / bucket_weight_sum)
+                else:
+                    sub_matrix = valid_matrix[:, bucket_t_idxs]
+                    
+                    weights_matrix = np.zeros((V, 243))
+                    counts_matrix = np.zeros((V, 243), dtype=int)
+                    w_log_w = bucket_weights * np.log2(bucket_weights + 1e-12)
+                    w_log_w_matrix = np.zeros((V, 243))
+                    
+                    np.add.at(weights_matrix, (row_indices_full, sub_matrix), bucket_weights)
+                    np.add.at(counts_matrix, (row_indices_full, sub_matrix), 1)
+                    np.add.at(w_log_w_matrix, (row_indices_full, sub_matrix), w_log_w)
+                    
+                    safe_weights = weights_matrix + 1e-12
+                    entropy_matrix = np.clip(np.log2(safe_weights) - (w_log_w_matrix / safe_weights), 0, None)
+                    
+                    cost_matrix = 1.0 + (entropy_matrix * 0.45)
+                    cost_matrix[counts_matrix == 1] = 1.0
+                    cost_matrix[:, 242] = 0.0
+                    cost_matrix[counts_matrix == 0] = 0.0
+                    
+                    p_sub = weights_matrix / bucket_weight_sum
+                    expected_after_g3 = np.sum(p_sub * cost_matrix, axis=1)
+                    turns_needed = np.min(1.0 + expected_after_g3)
+                
+                expected_turns_g1 += p_bucket * turns_needed
+                
+            total_expected_score = 2.0 + expected_turns_g1
+            
+            scored_guesses.append({
+                "word": word,
+                "expected_score": float(total_expected_score)
+            })
+            
+        scored_guesses.sort(key=lambda x: x["expected_score"])
+        
+        if scored_guesses:
+            best_score = scored_guesses[0]["expected_score"]
+            for g in scored_guesses:
+                penalty = int(round((g["expected_score"] - best_score) * 100))
+                g["skill"] = max(0, 99 - penalty)
+                
+        top_results = scored_guesses[:top_n]
+        
+        if collect_bucket_sizes:
+            return top_results, bucket_sizes
+        return top_results
     
     def end_game(self, target_word: str):
         """Lifecycle hook: Zeroes out the answered target from future consideration, rebuilds target arrays, and clears caches."""

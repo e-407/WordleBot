@@ -187,3 +187,5 @@ game_num,target,guesses,guess_count,failed,is_repeat,days_since_last,g_bar,base_
 1874,gripe,slate-crump-grope-gripe,4,False,True,7,10.0,0.106538,0.010654
 1875,feign,slate-doper-geeky-feign,4,False,True,1,9.7,0.115472,0.011547
 1876,privy,slate-crony-privy,3,False,False,1,8.83,0.114318,0.024572
+1877,clunk,slate-blind-clunk,3,False,False,2,8.83,0.113175,0.037336
+1878,snipe,slate-prion-snipe,3,False,False,3,8.83,0.112043,0.049842

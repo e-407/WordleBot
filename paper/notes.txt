@@ -794,11 +794,87 @@ E = 1.1100 + 0.7049 * ln(1 + 0.9169 * (H - 0.5))
 I then created Bot 9, which has all the reweighting behaviours as Bot 8, but changes the heuristics from Bot 5.
 As it is therefore different behaviourally to Bot 5, I ran it on all games starting from the beginning.
 
+I fear that as the 0.45 heuristic still ranked buckets accordingly, the performance difference may be negligible.
+I ran Bot 9 on the repeat era, to which it beat Bot 8 twice, lost twice and tied 184 times.
 
+Category           | Games  | Bot 8 Avg  | Bot 9 Avg  | Diff (B9-B8) 
+---------------------------------------------------------------------
+Overall Era        | 188    | 3.1436     | 3.1436     | +0.0000      
+Repeats Only       | 21     | 3.5714     | 3.5714     | +0.0000      
+Non-Repeats Only   | 167    | 3.0898     | 3.0898     | +0.0000     
 
+Running it on the non-repeat era gave:
+Category             | Games  | Bot 5 Avg  | Bot 9 Avg  | Diff (B9-B5) 
+-----------------------------------------------------------------------
+Overall (< 1688)     | 1688   | 3.2921     | 3.2980     | +0.0059      
+Pre-2023             | 561    | 3.4225     | 3.4278     | +0.0053      
+2023 Onwards (<1688) | 1127   | 3.2272     | 3.2334     | +0.0062      
 
+Which is surprisingly worse. However, I then considered when the heuristic is used.
+Guess 1 is hardcoded to be SLATE.
+The bot then finds the best second guess. It does this by simulating the turn after - finding the best third guess using the heuristic.
+The heuristic is therefore used on buckets which have been split by 3 guesses, so should be very small.
+Hence my model based on large buckets is unlikely to do well.
 
+However, having sampled some example scenarios, the bot does often have to use the heuristic on large buckets e.g. between 30 and 40 in size.
+This could be because when guessing there will inevitably be a large pool of words with no letters shared with the current guess.
+I sampled to find the distribution of bucket entropies, unsurprisingly lower entropies were much more common.
+However, when considering accuracy of the final expected guesses figure, the larger buckets are quite important.
+Not only do they have a higher probability, but their relative error leads to a greater change in calculated guesses, because it's an expected value multiplying bucket chance and estimated cost.
+Hence I ran importance sampling scaling the buckets by P*H,
+Where P is the probability of that entropy as found by my broad sampling
+And H is the entropy.
 
+I took 4048 samples from the start of the repeat era to the end of June.
+
+I decided to do a piecewise linear model. It was split every 0.25 until H=1, which was a better (and easier to evaluate) estimate than 2-p1.
+
+  0.00 <= H < 0.25 : E_adj = 0.1769 * H + -0.0045
+  0.25 <= H < 0.50 : E_adj = 0.2062 * H + -0.0119
+  0.50 <= H < 0.75 : E_adj = 0.3437 * H + -0.0806
+  0.75 <= H < 1.00 : E_adj = 0.7361 * H + -0.3749
+
+As the trend lines for [1,2], [2,3], [3,4] followed each other well so I did a single trend line for H>1.
+However, for H>4, E actually decreased. 
+I did some statistical testing which ruled out random noise.
+The explanation is presumably that "trap buckets" are concentrated in the 3-4 range while larger entropies are more diverse.
+However as this trend likely didn't continue I decided to just extend the H>1 line.
+
+  H >= 1.00        : E_adj = 0.2864 * H + 0.1282
+
+I then tested this on the non-repeat and repeat eras, and it surprisingly did worse than the previous Bot 9, losing by 2 on repeats and by 16 on non-repeats.
+
+My theory for this was that the 0.45 just under a cluster of points where H=1, and my models didn't.
+After splitting the linear regression lines between 1 and 2 I noticed that they actually decrease for a bit after H=1 and then increase again.
+Most importantly, they intercepted H=1 at the same place as the 0.45 heuristic.
+
+After further analysing small trends I came up with this model:
+
+  0.00 <= H < 0.20 : E_adj = 0.1590 * H + -0.0026   | Buckets: 45
+  0.20 <= H < 0.40 : E_adj = 0.2123 * H + -0.0133   | Buckets: 41
+  0.40 <= H < 0.60 : E_adj = 0.2147 * H + -0.0142   | Buckets: 32
+  0.60 <= H < 0.80 : E_adj = 0.4929 * H + -0.1811   | Buckets: 36
+  0.80 <= H < 1.00 : E_adj = 0.7394 * H + -0.3783   | Buckets: 205
+  1.00 <= H < 1.15 : E_adj = -0.4466 * H + 0.8995   | Buckets: 307
+  1.15 <= H < 1.50 : E_adj = 0.4893 * H + -0.1768   | Buckets: 408
+  1.50 <= H < 1.60 : E_adj = 1.1866 * H + -1.2228   | Buckets: 236
+  1.60 <= H < 1.75 : E_adj = -0.4829 * H + 1.4484   | Buckets: 158
+  1.75 <= H < 2.00 : E_adj = 0.5240 * H + -0.3136   | Buckets: 257
+  2.00 <= H < 2.50 : E_adj = 0.0844 * H + 0.5655   | Buckets: 612
+  2.50 <= H < 3.00 : E_adj = 0.4606 * H + -0.3750   | Buckets: 433
+  3.00 <= H < 3.50 : E_adj = 0.2461 * H + 0.2687   | Buckets: 549
+  3.50 <= H < 4.00 : E_adj = 0.3342 * H + -0.0396   | Buckets: 378
+  4.00 <= H < 4.50 : E_adj = -0.3448 * H + 2.6761   | Buckets: 279
+  H >= 4.50       : E_adj = 0.4500 * H + -0.9003   | Buckets: 0
+
+However, this yielded no significant improvement.
+I tweaked the model further, lowering it for the upper values of H on the basis that if the original heuristic was used to estimate the larger buckets, it will lead to an overestimate in the model.
+However, I couldn't get a significant in the repeat era or the non-repeat era so I'm leaving the heuristic enhancement here and sticking with the 0.45 heuristic for now.
+My theory is that the buckets modelled by Bot 8 don't match the predictions Bot 9 makes, leading to some mismatch and worse guess rankings.
+
+That concludes development for now!
+I'll continue to keep track of the performance of Bots 5-8 against WordleBot.
+I have the WordleBot data going back to 1/7/26, and since then Bot 8
 
 
 
