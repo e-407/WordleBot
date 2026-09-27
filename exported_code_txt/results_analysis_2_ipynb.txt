@@ -1,0 +1,374 @@
+import pandas as pd
+from scipy import stats
+
+# 1. Load both result files
+df_nyt = pd.read_csv("../data/bot5_chronological_results.csv")
+df_rew = pd.read_csv("../data/bot5_chronological_results_2.csv")
+
+# 2. Keep only the FIRST instance of each target word
+df_nyt_dedup = df_nyt.drop_duplicates(subset=['target'], keep='first').copy()
+df_rew_dedup = df_rew.drop_duplicates(subset=['target'], keep='first').copy()
+
+# 3. Merge deduplicated datasets
+merged = df_nyt_dedup.merge(df_rew_dedup, on="target", suffixes=("_nyt", "_rew"))
+
+def analyze_significance(df, label):
+    diffs = df["guess_count_nyt"] - df["guess_count_rew"]
+    non_zero_diffs = diffs[diffs != 0]
+    
+    if len(non_zero_diffs) > 0:
+        t_stat, p_val_ttest = stats.ttest_rel(df["guess_count_nyt"], df["guess_count_rew"])
+        stat_wilc, p_val_wilc = stats.wilcoxon(non_zero_diffs)
+    else:
+        p_val_ttest, p_val_wilc = 1.0, 1.0
+
+    print("=" * 60)
+    print(f"--- STATISTICAL SIGNIFICANCE: {label} ---")
+    print("=" * 60)
+    print(f"Total Unique Targets Evaluated: {len(df):,}")
+    print(f"Net Guesses Saved:              {diffs.sum()}")
+    print(f"Games Improved (+1+):           {(diffs > 0).sum()}")
+    print(f"Games Worsened (-1+):           {(diffs < 0).sum()}")
+    print(f"Games Identical:                {(diffs == 0).sum()}")
+    print("-" * 60)
+    print(f"Paired t-test p-value:          {p_val_ttest:.6f}")
+    print(f"Wilcoxon p-value:               {p_val_wilc:.6f}")
+    
+    sig_status = "YES (Statistically Significant)" if p_val_ttest < 0.05 else "NO (Not Significant)"
+    print(f"Significant at alpha = 0.05?    {sig_status}")
+    print("=" * 60 + "\n")
+
+# Run test on ALL unique target words
+analyze_significance(merged, "ALL UNIQUE TARGETS")
+
+# Run test on 2023 ONWARDS ONLY
+merged_2023 = merged[merged["year_nyt"] >= 2023].copy()
+analyze_significance(merged_2023, "2023 ONWARDS ONLY")
+
+# ----------------------------------------
+
+from pathlib import Path
+import pandas as pd
+
+# Load result CSVs
+data_dir = Path("../data")
+df_b5 = pd.read_csv(data_dir / "bot5_chronological_results_2.csv")
+df_b6 = pd.read_csv(data_dir / "bot6_chronological_results.csv")
+
+# Align Bot 5 with Bot 6's evaluation window using game_num
+merged = pd.merge(
+    df_b6,
+    df_b5[["game_num", "guess_count"]],
+    on="game_num",
+    suffixes=("_b6", "_b5"),
+)
+
+# Subset masks
+is_rep = merged["is_repeat"] == True
+is_non_rep = merged["is_repeat"] == False
+
+# Calculate metrics breakdown
+summary_data = [
+    {
+        "Category": "Overall Era",
+        "Games": len(merged),
+        "Bot 5 Avg": merged["guess_count_b5"].mean(),
+        "Bot 6 Avg": merged["guess_count_b6"].mean(),
+    },
+    {
+        "Category": "Repeats Only",
+        "Games": is_rep.sum(),
+        "Bot 5 Avg": merged.loc[is_rep, "guess_count_b5"].mean(),
+        "Bot 6 Avg": merged.loc[is_rep, "guess_count_b6"].mean(),
+    },
+    {
+        "Category": "Non-Repeats Only",
+        "Games": is_non_rep.sum(),
+        "Bot 5 Avg": merged.loc[is_non_rep, "guess_count_b5"].mean(),
+        "Bot 6 Avg": merged.loc[is_non_rep, "guess_count_b6"].mean(),
+    },
+]
+
+# Print Plaintext Table
+print(f"{'Category':<18} | {'Games':<6} | {'Bot 5 Avg':<10} | {'Bot 6 Avg':<10} | {'Diff (B6 - B5)':<14}")
+print("-" * 70)
+
+for row in summary_data:
+    cat = row["Category"]
+    games = row["Games"]
+    b5_avg = row["Bot 5 Avg"]
+    b6_avg = row["Bot 6 Avg"]
+    diff = b6_avg - b5_avg
+    print(f"{cat:<18} | {games:<6} | {b5_avg:<10.4f} | {b6_avg:<10.4f} | {diff:<+14.4f}")
+
+# ----------------------------------------
+
+from pathlib import Path
+import pandas as pd
+
+# 1. Load result CSVs for Bots 5, 6, and 7
+data_dir = Path("../data")
+df_b5 = pd.read_csv(data_dir / "bot5_chronological_results_2.csv")
+df_b6 = pd.read_csv(data_dir / "bot6_chronological_results.csv")
+df_b7 = pd.read_csv(data_dir / "bot7_chronological_results.csv")
+
+# 2. Align Bot 5 and Bot 7 with Bot 6's evaluation window using game_num
+merged = pd.merge(
+    df_b6,
+    df_b5[["game_num", "guess_count"]],
+    on="game_num",
+    suffixes=("_b6", "_b5"),
+)
+merged = pd.merge(
+    merged,
+    df_b7[["game_num", "guess_count"]].rename(columns={"guess_count": "guess_count_b7"}),
+    on="game_num",
+)
+
+# 3. Subset masks
+is_rep = merged["is_repeat"] == True
+is_non_rep = merged["is_repeat"] == False
+
+# 4. Calculate metrics breakdown across all three bots
+summary_data = [
+    {
+        "Category": "Overall Era",
+        "Games": len(merged),
+        "Bot 5 Avg": merged["guess_count_b5"].mean(),
+        "Bot 6 Avg": merged["guess_count_b6"].mean(),
+        "Bot 7 Avg": merged["guess_count_b7"].mean(),
+    },
+    {
+        "Category": "Repeats Only",
+        "Games": is_rep.sum(),
+        "Bot 5 Avg": merged.loc[is_rep, "guess_count_b5"].mean(),
+        "Bot 6 Avg": merged.loc[is_rep, "guess_count_b6"].mean(),
+        "Bot 7 Avg": merged.loc[is_rep, "guess_count_b7"].mean(),
+    },
+    {
+        "Category": "Non-Repeats Only",
+        "Games": is_non_rep.sum(),
+        "Bot 5 Avg": merged.loc[is_non_rep, "guess_count_b5"].mean(),
+        "Bot 6 Avg": merged.loc[is_non_rep, "guess_count_b6"].mean(),
+        "Bot 7 Avg": merged.loc[is_non_rep, "guess_count_b7"].mean(),
+    },
+]
+
+# 5. Print Plaintext Table
+header_str = (
+    f"{'Category':<18} | {'Games':<6} | {'Bot 5 Avg':<10} | "
+    f"{'Bot 6 Avg':<10} | {'Bot 7 Avg':<10} | {'Diff (B6-B5)':<13} | {'Diff (B7-B5)':<13}"
+)
+print(header_str)
+print("-" * len(header_str))
+
+for row in summary_data:
+    cat = row["Category"]
+    games = row["Games"]
+    b5_avg = row["Bot 5 Avg"]
+    b6_avg = row["Bot 6 Avg"]
+    b7_avg = row["Bot 7 Avg"]
+    
+    diff_b6_b5 = b6_avg - b5_avg
+    diff_b7_b5 = b7_avg - b5_avg
+    
+    print(
+        f"{cat:<18} | {games:<6} | {b5_avg:<10.4f} | "
+        f"{b6_avg:<10.4f} | {b7_avg:<10.4f} | {diff_b6_b5:<+13.4f} | {diff_b7_b5:<+13.4f}"
+    )
+
+# ----------------------------------------
+
+# 1. Load Bot 8 results
+df_b8 = pd.read_csv(data_dir / "bot8_chronological_results.csv")
+
+# 2. Merge Bot 8 into the existing aligned evaluation window
+merged_678 = pd.merge(
+    merged,
+    df_b8[["game_num", "guess_count"]].rename(columns={"guess_count": "guess_count_b8"}),
+    on="game_num",
+)
+
+# 3. Subset masks
+is_rep_678 = merged_678["is_repeat"] == True
+is_non_rep_678 = merged_678["is_repeat"] == False
+
+# 4. Calculate metrics breakdown across Bots 6, 7, and 8
+summary_data_678 = [
+    {
+        "Category": "Overall Era",
+        "Games": len(merged_678),
+        "Bot 6 Avg": merged_678["guess_count_b6"].mean(),
+        "Bot 7 Avg": merged_678["guess_count_b7"].mean(),
+        "Bot 8 Avg": merged_678["guess_count_b8"].mean(),
+    },
+    {
+        "Category": "Repeats Only",
+        "Games": is_rep_678.sum(),
+        "Bot 6 Avg": merged_678.loc[is_rep_678, "guess_count_b6"].mean(),
+        "Bot 7 Avg": merged_678.loc[is_rep_678, "guess_count_b7"].mean(),
+        "Bot 8 Avg": merged_678.loc[is_rep_678, "guess_count_b8"].mean(),
+    },
+    {
+        "Category": "Non-Repeats Only",
+        "Games": is_non_rep_678.sum(),
+        "Bot 6 Avg": merged_678.loc[is_non_rep_678, "guess_count_b6"].mean(),
+        "Bot 7 Avg": merged_678.loc[is_non_rep_678, "guess_count_b7"].mean(),
+        "Bot 8 Avg": merged_678.loc[is_non_rep_678, "guess_count_b8"].mean(),
+    },
+]
+
+# 5. Print Plaintext Table
+header_str_678 = (
+    f"{'Category':<18} | {'Games':<6} | {'Bot 6 Avg':<10} | "
+    f"{'Bot 7 Avg':<10} | {'Bot 8 Avg':<10} | {'Diff (B7-B6)':<13} | {'Diff (B8-B6)':<13}"
+)
+print(header_str_678)
+print("-" * len(header_str_678))
+
+for row in summary_data_678:
+    cat = row["Category"]
+    games = row["Games"]
+    b6_avg = row["Bot 6 Avg"]
+    b7_avg = row["Bot 7 Avg"]
+    b8_avg = row["Bot 8 Avg"]
+    
+    diff_b7_b6 = b7_avg - b6_avg
+    diff_b8_b6 = b8_avg - b6_avg
+    
+    print(
+        f"{cat:<18} | {games:<6} | {b6_avg:<10.4f} | "
+        f"{b7_avg:<10.4f} | {b8_avg:<10.4f} | {diff_b7_b6:<+13.4f} | {diff_b8_b6:<+13.4f}"
+    )
+
+# ----------------------------------------
+
+# 1. Load Bot 9 results
+df_b9 = pd.read_csv(data_dir / "bot9_chronological_results_3.csv")
+
+# 2. Merge Bot 9 into the existing aligned evaluation window
+merged_89 = pd.merge(
+    merged_678,
+    df_b9[["game_num", "guess_count"]].rename(columns={"guess_count": "guess_count_b9"}),
+    on="game_num",
+)
+
+# 3. Subset masks
+is_rep_89 = merged_89["is_repeat"] == True
+is_non_rep_89 = merged_89["is_repeat"] == False
+
+# 4. Calculate metrics breakdown across Bots 8 and 9
+summary_data_89 = [
+    {
+        "Category": "Overall Era",
+        "Games": len(merged_89),
+        "Bot 8 Avg": merged_89["guess_count_b8"].mean(),
+        "Bot 9 Avg": merged_89["guess_count_b9"].mean(),
+    },
+    {
+        "Category": "Repeats Only",
+        "Games": is_rep_89.sum(),
+        "Bot 8 Avg": merged_89.loc[is_rep_89, "guess_count_b8"].mean(),
+        "Bot 9 Avg": merged_89.loc[is_rep_89, "guess_count_b9"].mean(),
+    },
+    {
+        "Category": "Non-Repeats Only",
+        "Games": is_non_rep_89.sum(),
+        "Bot 8 Avg": merged_89.loc[is_non_rep_89, "guess_count_b8"].mean(),
+        "Bot 9 Avg": merged_89.loc[is_non_rep_89, "guess_count_b9"].mean(),
+    },
+]
+
+# 5. Print Plaintext Table
+header_str_89 = (
+    f"{'Category':<18} | {'Games':<6} | {'Bot 8 Avg':<10} | "
+    f"{'Bot 9 Avg':<10} | {'Diff (B9-B8)':<13}"
+)
+print("\n" + header_str_89) # Added a newline to separate from the previous cell's output
+print("-" * len(header_str_89))
+
+for row in summary_data_89:
+    cat = row["Category"]
+    games = row["Games"]
+    b8_avg = row["Bot 8 Avg"]
+    b9_avg = row["Bot 9 Avg"]
+    
+    diff_b9_b8 = b9_avg - b8_avg
+    
+    print(
+        f"{cat:<18} | {games:<6} | {b8_avg:<10.4f} | "
+        f"{b9_avg:<10.4f} | {diff_b9_b8:<+13.4f}"
+    )
+
+# ----------------------------------------
+
+import pandas as pd
+
+# 1. Load Bot 5 and Bot 9 results
+df_b5 = pd.read_csv("../data/bot5_chronological_results_2.csv")
+df_b9 = pd.read_csv("../data/bot9_chronological_results_non_repeat.csv")
+
+# Ensure 'year' is present in df_b5; fall back to calculation if absent
+if "year" not in df_b5.columns:
+    start_date = pd.Timestamp("2021-06-19")
+    df_b5["year"] = df_b5["game_num"].apply(lambda idx: (start_date + pd.Timedelta(days=int(idx))).year)
+
+# 2. Merge Bot 5 and Bot 9 on game_num
+merged_59 = pd.merge(
+    df_b5[["game_num", "year", "guess_count"]].rename(columns={"guess_count": "guess_count_b5"}),
+    df_b9[["game_num", "guess_count"]].rename(columns={"guess_count": "guess_count_b9"}),
+    on="game_num",
+)
+
+# 3. Filter data up to Game 1688 (Non-Repeat Era: Games 0 to 1687)
+merged_1688 = merged_59[merged_59["game_num"] < 1688].copy()
+
+# 4. Subset masks for date split
+is_pre_2023 = merged_1688["year"] < 2023
+is_2023_plus = merged_1688["year"] >= 2023
+
+# 5. Calculate metrics breakdown across Bots 5 and 9
+summary_data_59 = [
+    {
+        "Category": "Overall (< 1688)",
+        "Games": len(merged_1688),
+        "Bot 5 Avg": merged_1688["guess_count_b5"].mean(),
+        "Bot 9 Avg": merged_1688["guess_count_b9"].mean(),
+    },
+    {
+        "Category": "Pre-2023",
+        "Games": is_pre_2023.sum(),
+        "Bot 5 Avg": merged_1688.loc[is_pre_2023, "guess_count_b5"].mean(),
+        "Bot 9 Avg": merged_1688.loc[is_pre_2023, "guess_count_b9"].mean(),
+    },
+    {
+        "Category": "2023 Onwards (<1688)",
+        "Games": is_2023_plus.sum(),
+        "Bot 5 Avg": merged_1688.loc[is_2023_plus, "guess_count_b5"].mean(),
+        "Bot 9 Avg": merged_1688.loc[is_2023_plus, "guess_count_b9"].mean(),
+    },
+]
+
+# 6. Print Plaintext Table
+header_str_59 = (
+    f"{'Category':<20} | {'Games':<6} | {'Bot 5 Avg':<10} | "
+    f"{'Bot 9 Avg':<10} | {'Diff (B9-B5)':<13}"
+)
+print("\n" + header_str_59)
+print("-" * len(header_str_59))
+
+for row in summary_data_59:
+    cat = row["Category"]
+    games = row["Games"]
+    b5_avg = row["Bot 5 Avg"]
+    b9_avg = row["Bot 9 Avg"]
+    
+    diff_b9_b5 = b9_avg - b5_avg
+    
+    print(
+        f"{cat:<20} | {games:<6} | {b5_avg:<10.4f} | "
+        f"{b9_avg:<10.4f} | {diff_b9_b5:<+13.4f}"
+    )
+
+# ----------------------------------------
+

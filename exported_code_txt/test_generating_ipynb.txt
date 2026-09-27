@@ -1,0 +1,157 @@
+import sys
+import random
+import numpy as np
+import pandas as pd
+from pathlib import Path
+
+# Identify project directory structure relative to the notebook location
+NOTEBOOK_DIR = Path().resolve()
+PROJECT_ROOT = NOTEBOOK_DIR.parent if NOTEBOOK_DIR.name == 'notebooks' else NOTEBOOK_DIR
+SRC_DIR = PROJECT_ROOT / 'src'
+
+# Append 'src/' to sys.path so Python can find 'engine.py'
+if str(SRC_DIR) not in sys.path:
+    sys.path.append(str(SRC_DIR))
+
+from engine import GameEngine
+
+# Ensure reproducible target selection across test runs
+random.seed(42)
+np.random.seed(42)
+
+# Helper function to convert 0-242 feedback integer codes into visual emojis
+def code_to_emojis(code: int) -> str:
+    symbols = ["⬛", "🟨", "🟩"]
+    emojis = []
+    for _ in range(5):
+        emojis.append(symbols[code % 3])
+        code //= 3
+    return "".join(reversed(emojis))
+
+# Load engine and fetch SLATE index
+engine = GameEngine()
+slate_word = "slate"
+if slate_word not in engine.guess_to_idx:
+    raise ValueError(f"'{slate_word}' not found in allowed guesses.")
+
+slate_idx = engine.guess_to_idx[slate_word]
+print(f"Loaded GameEngine successfully from '{SRC_DIR}'. SLATE index: {slate_idx}")
+
+# ----------------------------------------
+
+# 1. Fetch priors for all 4,500 target words from data/
+priors_path = PROJECT_ROOT / 'data' / 'priors_4500.csv'
+
+# Defensive CSV reading: handles files WITH or WITHOUT headers seamlessly
+priors_df = pd.read_csv(priors_path)
+
+if 'word' in priors_df.columns and 'prior' in priors_df.columns:
+    words_col = priors_df['word']
+    priors_col = priors_df['prior']
+else:
+    # Re-read without headers (assuming col 0 is word, col 1 is prior)
+    priors_df = pd.read_csv(priors_path, header=None)
+    words_col = priors_df[0]
+    priors_col = priors_df[1]
+
+# Ensure string cleaning and numeric types
+words_clean = words_col.astype(str).str.strip().str.lower()
+priors_clean = pd.to_numeric(priors_col, errors='coerce').fillna(1e-6)
+
+# Create mapping dictionary {word: prior_weight}
+prior_weights = dict(zip(words_clean, priors_clean))
+
+# Array of weights aligned with target word indices
+target_words = [engine.idx_to_target[i] for i in range(len(engine.target_to_idx))]
+weights = np.array([prior_weights.get(w, 1e-6) for w in target_words])
+total_prior_weight = np.sum(weights)
+
+# 2. Extract feedback codes for SLATE against all 4,500 target words
+slate_feedbacks = engine.feedback_matrix[slate_idx, :]
+
+# 3. Group targets by unique feedback bucket
+unique_codes, counts = np.unique(slate_feedbacks, return_counts=True)
+
+test_set_data = []
+
+for code in unique_codes:
+    # Get all target indices that produce this specific feedback
+    target_indices = np.where(slate_feedbacks == code)[0]
+    bucket_words = [engine.idx_to_target[i] for i in target_indices]
+    
+    # Extract prior weights for words in this bucket
+    bucket_weights = weights[target_indices]
+    bucket_prior_sum = np.sum(bucket_weights)
+    bucket_probability = bucket_prior_sum / total_prior_weight
+    
+    # PROBABILISTIC SELECTION: Sample word based on relative prior weights within the bucket
+    if bucket_prior_sum > 0:
+        bucket_probs = bucket_weights / bucket_prior_sum
+    else:
+        bucket_probs = np.ones(len(bucket_weights)) / len(bucket_weights)
+        
+    sampled_idx = np.random.choice(target_indices, p=bucket_probs)
+    sample_target = engine.idx_to_target[sampled_idx]
+    
+    test_set_data.append({
+        "feedback_code": int(code),
+        "feedback_emojis": code_to_emojis(int(code)),
+        "pool_size": len(bucket_words),
+        "probability": bucket_probability,
+        "sample_target": sample_target,
+        "all_words": bucket_words
+    })
+
+# Convert to DataFrame
+df_buckets = pd.DataFrame(test_set_data)
+
+print(f"Total Unique Buckets Generated after 'SLATE': {len(df_buckets)}")
+
+# ----------------------------------------
+
+# Sort buckets by probability descending
+df_sorted = df_buckets.sort_values(by="probability", ascending=False).reset_index(drop=True)
+
+# Select top 20
+top_20 = df_sorted.head(20).copy()
+top_20["Rank"] = range(1, 21)
+
+# Format header & dividers
+header = f"{'Rank':<5} {'Pattern':<12} {'Code':<6} {'Pool Size':<11} {'Prob (%)':<10} {'Sample Target':<15}"
+divider = "-" * len(header)
+
+print("=" * len(header))
+print("            TOP 20 MOST LIKELY BUCKETS AFTER 'SLATE'")
+print("=" * len(header))
+print(header)
+print(divider)
+
+for _, row in top_20.iterrows():
+    rank_str = f"{row['Rank']}."
+    pattern = row['feedback_emojis']
+    code_str = str(row['feedback_code'])
+    pool_str = str(row['pool_size'])
+    prob_str = f"{row['probability'] * 100:.2f}%"
+    target_str = str(row['sample_target'])
+    
+    # Adding 2 trailing spaces after `pattern` balances the 5 extra visual columns taken by the emojis
+    print(f"{rank_str:<5} {pattern}  {code_str:<6} {pool_str:<11} {prob_str:<10} {target_str:<15}")
+
+print("=" * len(header))
+
+# ----------------------------------------
+
+# Cell 4: Export Top 20 Test Scenarios
+output_path = '../data/slate_bucket_test_set.csv'
+
+# Sort by probability descending
+df_sorted = df_buckets.sort_values(by="probability", ascending=False).reset_index(drop=True)
+
+# Save to CSV
+df_sorted.to_csv(output_path, index=False)
+
+print(f"Successfully exported {len(df_sorted)} bucket test scenarios to: {output_path}")
+print(f"Top 20 targets ready for the test suite!")
+
+# ----------------------------------------
+

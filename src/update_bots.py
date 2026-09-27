@@ -14,7 +14,6 @@ from bot5 import Bot5
 from bot6 import Bot6
 from bot7 import Bot7
 from bot8 import Bot8
-from bot9 import Bot9
 
 
 def get_game_year(df_past: pd.DataFrame, game_idx: int) -> int:
@@ -42,7 +41,6 @@ def update_bots():
         "b6": PROJECT_ROOT / 'data' / 'bot6_chronological_results.csv',
         "b7": PROJECT_ROOT / 'data' / 'bot7_chronological_results.csv',
         "b8": PROJECT_ROOT / 'data' / 'bot8_chronological_results.csv',
-        "b9": PROJECT_ROOT / 'data' / 'bot9_chronological_results_3.csv',
     }
     
     if not past_answers_file.exists():
@@ -74,7 +72,7 @@ def update_bots():
             if not df.empty and 'game_num' in df.columns:
                 start_indices[key] = int(df['game_num'].max()) + 1
             else:
-                # Default empty files: B5 starts at 0, B6-B9 start at Repeat Era
+                # Default empty files: B5 starts at 0, B6-B8 start at Repeat Era
                 start_indices[key] = 0 if key == "b5" else repeat_era_start_idx
         else:
             existing_dfs[key] = pd.DataFrame()
@@ -147,27 +145,11 @@ def update_bots():
         c_lorentz=100.0
     )
 
-    bot9 = Bot9(
-        all_words=list(engine.guess_to_idx.keys()),
-        priors_path=priors_file,
-        feedback_matrix=engine.feedback_matrix,
-        guess_to_idx=engine.guess_to_idx,
-        target_to_idx=engine.target_to_idx,
-        starting_repeat_prob=0.10,
-        alpha=0.01,
-        alpha_g=0.10,
-        L=0.1,
-        U=1.9,
-        initial_g_bar=9.47,
-        c_lorentz=100.0
-    )
-
     bots = {
         "b5": bot5,
         "b6": bot6,
         "b7": bot7,
         "b8": bot8,
-        "b9": bot9,
     }
 
     # 5. Warm up internal states independently up to each bot's respective start_idx
@@ -186,14 +168,14 @@ def update_bots():
     # 6. Play missing games and collect results
     min_start_idx = min(start_indices.values())
     print(f"\nPlaying New Days (Games {min_start_idx} to {len(all_targets)-1})...")
-    print("-" * 102)
+    print("-" * 94)
     header = (
         f"{'Game #':<8} | {'Target':<8} | {'Rep?':<5} | "
-        f"{'B5':<5} | {'B6':<5} | {'B7':<5} | {'B8':<5} | {'B9':<5} | "
+        f"{'B5':<5} | {'B6':<5} | {'B7':<5} | {'B8':<5} | "
         f"{'P(Rep)':<10} | {'P(Adj)':<10} | {'ETA':<8}"
     )
     print(header)
-    print("-" * 102)
+    print("-" * 94)
 
     start_time = time.time()
 
@@ -336,47 +318,15 @@ def update_bots():
             counts["b8"] = str(len(b8_guesses))
             probs["b8"] = f"{b8_new_prob:.4f}"
 
-        # --- Play Bot 9 ---
-        if game_idx >= start_indices["b9"]:
-            bot9.reset()
-            b9_guesses = []
-            b9_gap_before = bot9.days_since_last
-            b9_gbar_before = bot9.g_bar
-            
-            while True:
-                g_idx = bot9.get_best_guess()
-                g_word = engine.idx_to_guess[g_idx]
-                b9_guesses.append(g_word)
-                if g_word == target_word:
-                    break
-                bot9.update_state(g_idx, engine.feedback_matrix[g_idx, t_idx])
-                
-            b9_is_rep, b9_new_prob = bot9.end_game(target_word, update_ema=is_in_repeat_era)
-            
-            append_row("b9", {
-                "game_num": game_idx,
-                "target": target_word,
-                "guesses": "-".join(b9_guesses),
-                "guess_count": len(b9_guesses),
-                "failed": len(b9_guesses) > 6,
-                "is_repeat": b9_is_rep,
-                "days_since_last": b9_gap_before,
-                "g_bar": round(b9_gbar_before, 2),
-                "base_ema_prob": round(bot9.repeat_prob, 6),
-                "adjusted_prob": round(b9_new_prob, 6)
-            })
-            counts["b9"] = str(len(b9_guesses))
-            probs["b9"] = f"{b9_new_prob:.4f}"
-
         # --- Fallback: Retrieve cached results for bots that were skipped ---
-        for key in ["b5", "b6", "b7", "b8", "b9"]:
+        for key in ["b5", "b6", "b7", "b8"]:
             if game_idx < start_indices[key] and game_idx in cached_results[key]:
                 row = cached_results[key][game_idx]
                 counts[key] = str(int(row['guess_count']))
                 
                 if key == "b6" and "repeat_prob" in row:
                     probs[key] = f"{float(row['repeat_prob']):.4f}"
-                elif key in ["b7", "b8", "b9"] and "adjusted_prob" in row:
+                elif key in ["b7", "b8"] and "adjusted_prob" in row:
                     probs[key] = f"{float(row['adjusted_prob']):.4f}"
 
         # Format output table line and calculate ETA
@@ -391,15 +341,14 @@ def update_bots():
         c_b6 = counts.get("b6", "-")
         c_b7 = counts.get("b7", "-")
         c_b8 = counts.get("b8", "-")
-        c_b9 = counts.get("b9", "-")
         p_b6 = probs.get("b6", "-")
         
-        # Grab adjusted probability from whichever bot was processed (B9 -> B8 -> B7)
-        p_adj = probs.get("b9") or probs.get("b8") or probs.get("b7") or "-"
+        # Grab adjusted probability from whichever bot was processed (B8 -> B7)
+        p_adj = probs.get("b8") or probs.get("b7") or "-"
 
         print(
             f"{game_idx:<8} | {target_word:<8} | {rep_str:<5} | "
-            f"{c_b5:<5} | {c_b6:<5} | {c_b7:<5} | {c_b8:<5} | {c_b9:<5} | "
+            f"{c_b5:<5} | {c_b6:<5} | {c_b7:<5} | {c_b8:<5} | "
             f"{p_b6:<10} | {p_adj:<10} | {eta_str:<8}"
         )
 

@@ -348,9 +348,9 @@ As it turns out, every single Wordle solution has been in the 3209 word list:
 --- PAST SOLUTIONS: OOF MODEL RANK & LIST INCLUSION ---
 Total Past Answers Analyzed: 1,856
 
-Top 1,000 Ranked:  628  ( 33.8%)
-Top 2,000 Ranked: 1121  ( 60.4%)
-Top 3,000 Ranked: 1507  ( 81.2%)
+Top 1,000 Ranked:  628  (33.8%)
+Top 2,000 Ranked: 1121  (60.4%)
+Top 3,000 Ranked: 1507  (81.2%)
 ----------------------------------------------------
 In NYT Target List (~3.2k): 1856  (100.00%)
 In 4,500 Guess List:        1856  (100.00%)
@@ -494,109 +494,87 @@ alpha corresponds to the maximum prior (assigned to a ceiling similar to the one
 ceil is the number of words in the ceiling
 beta dictates the shape of the reweighting curve
 
-I then did a grid search (took 1 hour) with the following sets:
+I then did a grid search with the following sets:
 alphas = [0.3, 0.7, 1.2]
 ceils = [0, 500, 1000, 1500]
 betas = [0.25, 0.5, 1.0, 2.0]
 
-After doing some analysis on the results I then performed another search with these sets (took 5-6 hours):
-alphas = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75]
-ceils = [500, 750, 1000, 1250, 1500, 1750, 2000, 2110]
+After doing some analysis on the results I then performed another search with these sets:
+alphas = [0.5, 0.75, 1.0, 1.5, 2, 2.5, 3, 4, 5]
+ceils = [0, 250, 500, 750, 1000, 1500, 2110]
 betas = [0.15, 0.3, 0.45, 0.6, 0.75]
 
-The best 10 were the following:
-   (1.25, 1000, 0.15),
-   (1.25, 750, 0.15),
-   (1.25, 1500, 0.45),
-   (1.25, 1750, 0.30),
-   (1.25, 1750, 0.45),
-   (1.25, 1750, 0.60),
-   (1.00, 750, 0.15),
-   (1.25, 500, 0.15),
-   (1.50, 500, 0.15),
-   (1.50, 750, 0.15)
+However this yielded no clear answer region so I did another search using these sets:
+alphas = [2, 4, 6, 8, 10, 12]
+ceils = [0, 250, 500, 750, 1000, 1500, 2110]
+betas = [0.2, 0.5, 1, 1.75, 3, 100]
 
-I then tested the 10 best performing sets on 2025 data as well (after running them on past games so their memory worked).
-They all slightly decreased the number of guesses in 2025, which bodes well for not overfitting.
-I used a weighted average (emphasising newer games) to select my new system, settling on this:
+I then looked at the performance of these on the pre-2025 data and the post-2025 data.
+The best pre-2025 performers all had alphas of 10 and 12, though lower alphas generalised better (as expected).
+The best performing set on the post-2025 data was alpha=4, ceil=750, beta=3.
+This was also the best performing set with an alpha below 10 on the pre-2025 data so I settled on it.
 
-Split           | Total  | Avg_Guesses  | Diff_to_Base | Max   | Fails 
------------------------------------------------------------------------------------------------
-Year 2021       | 196    | 3.6276       | +0.0357      | 6     | 0     
-Year 2022       | 365    | 3.5123       | -0.0356      | 5     | 0     
-Year 2023       | 365    | 3.4438       | -0.0274      | 6     | 0     
-Year 2024       | 366    | 3.4481       | -0.0219      | 6     | 0     
-Year 2025       | 365    | 3.3808       | -0.0082      | 5     | 0     
-Year 2026       | 31     | 3.4516       | +0.0323      | 5     | 0     
------------------------------------------------------------------------------------------------
-2025-26 (Comb)  | 396    | 3.3864       | -0.0051      | 5     | 0     
------------------------------------------------------------------------------------------------
-Raw Overall     | 1688   | 3.4674       | -0.0154      | 6     | 0     
-WEIGHTED METRIC | -      | 3.4270       | -0.0132      | -     | -     
-
-The baseline is Bot 4 running on the original priors. The parameter set was (1.50, 750, 0.15).
-I then created a set of 4500 reweighted priors.
 I also reduced the minimum non-zero value of 0.003896 to 0.001 to reduce the probability mass in the tail as none of these words have ever been chosen.
 
 The next feature to add is the ability to handle repeats, though I wanted to test if these improvements were reflected in the more capable system.
 Hence the creation of Bot 5, essentially Bot 3's turn logic with Bot 4's memory system.
 
-Here are the results of running Bot 5 of NYT's priors:
+        Here are the results of running Bot 5 of NYT's priors:
 
-Split           | Total_Words  | Avg_Guesses  | Max_Guesses  | Failures (>6)
--------------------------------------------------------------------------------------
-Year 2021       | 196          | 3.5000       | 5            | 0           
-Year 2022       | 365          | 3.3890       | 5            | 0           
-Year 2023       | 365          | 3.2959       | 6            | 0           
-Year 2024       | 366          | 3.2787       | 5            | 0           
-Year 2025       | 365          | 3.1918       | 5            | 0           
-Year 2026       | 199          | 3.3015       | 6            | 0           
--------------------------------------------------------------------------------------
-Overall         | 1856         | 3.3125       | 6            | 0  
+        Split           | Total_Words  | Avg_Guesses  | Max_Guesses  | Failures (>6)
+        -------------------------------------------------------------------------------------
+        Year 2021       | 196          | 3.5000       | 5            | 0           
+        Year 2022       | 365          | 3.3890       | 5            | 0           
+        Year 2023       | 365          | 3.2959       | 6            | 0           
+        Year 2024       | 366          | 3.2787       | 5            | 0           
+        Year 2025       | 365          | 3.1918       | 5            | 0           
+        Year 2026       | 199          | 3.3015       | 6            | 0           
+        -------------------------------------------------------------------------------------
+        Overall         | 1856         | 3.3125       | 6            | 0  
 
-And here the results of running Bot 5 on my reweighted priors:
+        And here the results of running Bot 5 on my reweighted priors:
 
-Split           | Total_Words  | Avg_Guesses  | Max_Guesses  | Failures (>6)
--------------------------------------------------------------------------------------
-Year 2021       | 196          | 3.4745       | 5            | 0           
-Year 2022       | 365          | 3.3945       | 5            | 0           
-Year 2023       | 365          | 3.2685       | 6            | 0           
-Year 2024       | 366          | 3.2514       | 5            | 0           
-Year 2025       | 365          | 3.1644       | 5            | 0           
-Year 2026       | 199          | 3.2814       | 6            | 0           
--------------------------------------------------------------------------------------
-Overall         | 1856         | 3.2926       | 6            | 0        
+        Split           | Total_Words  | Avg_Guesses  | Max_Guesses  | Failures (>6)
+        -------------------------------------------------------------------------------------
+        Year 2021       | 196          | 3.4745       | 5            | 0           
+        Year 2022       | 365          | 3.3945       | 5            | 0           
+        Year 2023       | 365          | 3.2685       | 6            | 0           
+        Year 2024       | 366          | 3.2514       | 5            | 0           
+        Year 2025       | 365          | 3.1644       | 5            | 0           
+        Year 2026       | 199          | 3.2814       | 6            | 0           
+        -------------------------------------------------------------------------------------
+        Overall         | 1856         | 3.2926       | 6            | 0        
 
-The spike in 2026 is due to the repeated solutions - the bot has them at priors of 0 so exhausts the full 4500 first.
-After filtering out the repeats in 2026 I did some statistical testing:
+        The spike in 2026 is due to the repeated solutions - the bot has them at priors of 0 so exhausts the full 4500 first.
+        After filtering out the repeats in 2026 I did some statistical testing:
 
-============================================================
---- STATISTICAL SIGNIFICANCE: ALL UNIQUE TARGETS ---
-============================================================
-Total Unique Targets Evaluated: 1,838
-Net Guesses Saved:              40
-Games Improved (+1+):           210
-Games Worsened (-1+):           170
-Games Identical:                1458
-------------------------------------------------------------
-Paired t-test p-value:          0.046554
-Wilcoxon p-value:               0.046746
-Significant at alpha = 0.05?    YES (Statistically Significant)
-============================================================
+        ============================================================
+        --- STATISTICAL SIGNIFICANCE: ALL UNIQUE TARGETS ---
+        ============================================================
+        Total Unique Targets Evaluated: 1,838
+        Net Guesses Saved:              40
+        Games Improved (+1+):           210
+        Games Worsened (-1+):           170
+        Games Identical:                1458
+        ------------------------------------------------------------
+        Paired t-test p-value:          0.046554
+        Wilcoxon p-value:               0.046746
+        Significant at alpha = 0.05?    YES (Statistically Significant)
+        ============================================================
 
-============================================================
---- STATISTICAL SIGNIFICANCE: 2023 ONWARDS ONLY ---
-============================================================
-Total Unique Targets Evaluated: 1,277
-Net Guesses Saved:              37
-Games Improved (+1+):           150
-Games Worsened (-1+):           113
-Games Identical:                1014
-------------------------------------------------------------
-Paired t-test p-value:          0.028903
-Wilcoxon p-value:               0.029206
-Significant at alpha = 0.05?    YES (Statistically Significant)
-============================================================
+        ============================================================
+        --- STATISTICAL SIGNIFICANCE: 2023 ONWARDS ONLY ---
+        ============================================================
+        Total Unique Targets Evaluated: 1,277
+        Net Guesses Saved:              37
+        Games Improved (+1+):           150
+        Games Worsened (-1+):           113
+        Games Identical:                1014
+        ------------------------------------------------------------
+        Paired t-test p-value:          0.028903
+        Wilcoxon p-value:               0.029206
+        Significant at alpha = 0.05?    YES (Statistically Significant)
+        ============================================================
 
 Hence I can claim my new priors have improved my system, both since the NYT acquisition and since Wordle's beginning.
 The next logical step (and the final part of my project for now) is to protect the system against repeat guesses.
@@ -643,12 +621,12 @@ I chose alpha=0.01 for gradual updates (most of the mass in the average within t
 The bot then divides the guess list into potential repeats and non-repeats, and normalises the priors according to the predicted probability of a repeat (keeping the ratios within the two sections).
 Once a word is repeated twice, it is deemed extremely unlikely to appear again, so has its prior set to 1e-7 and is returned to the section of unseen words to save probability mass in the seen words section.
 
-The results of testing Bot 6 on the repeat-word era of Wordle are as follows:
-Category           | Games  | Bot 5 Avg  | Bot 6 Avg  | Diff (B6 - B5)
-----------------------------------------------------------------------
-Overall Era        | 188    | 3.2872     | 3.1915     | -0.0957       
-Repeats Only       | 21     | 4.7143     | 4.0000     | -0.7143       
-Non-Repeats Only   | 167    | 3.1078     | 3.0898     | -0.0180   
+          The results of testing Bot 6 on the repeat-word era of Wordle are as follows:
+          Category           | Games  | Bot 5 Avg  | Bot 6 Avg  | Diff (B6 - B5)
+          ----------------------------------------------------------------------
+          Overall Era        | 188    | 3.2872     | 3.1915     | -0.0957       
+          Repeats Only       | 21     | 4.7143     | 4.0000     | -0.7143       
+          Non-Repeats Only   | 167    | 3.1078     | 3.0898     | -0.0180   
 
 The improvement on the non-repeats is likely just statistical noise.
 #NOTE THIS ISN'T ALL NEW GAMES BECAUSE BOT 5 HASN'T BEEN RUN ON THE NEWEST ONES
@@ -666,12 +644,12 @@ L is a lower bound. I chose L=0.1, meaning the day after a repeat, it is 0.1 tim
 U is an upper bound. I chose U=1.9, so the maximum weighting applied to the repeat probability is 1.9 times as likely as predicted by the exponential average, occurring after many days of no repeats
 G is the expected number of days between repeats, determined by an exponential average updated by the number of days between repeats (updated every repeat, alpha=0.1)
 
-Running Bot 7 on the repeat era gave this:
-Category           | Games  | Bot 5 Avg  | Bot 6 Avg  | Bot 7 Avg  | Diff (B6-B5)  | Diff (B7-B5) 
---------------------------------------------------------------------------------------------------
-Overall Era        | 188    | 3.2872     | 3.1915     | 3.1809     | -0.0957       | -0.1064      
-Repeats Only       | 21     | 4.7143     | 4.0000     | 3.9048     | -0.7143       | -0.8095      
-Non-Repeats Only   | 167    | 3.1078     | 3.0898     | 3.0898     | -0.0180       | -0.0180          
+          Running Bot 7 on the repeat era gave this:
+          Category           | Games  | Bot 5 Avg  | Bot 6 Avg  | Bot 7 Avg  | Diff (B6-B5)  | Diff (B7-B5) 
+          --------------------------------------------------------------------------------------------------
+          Overall Era        | 188    | 3.2872     | 3.1915     | 3.1809     | -0.0957       | -0.1064      
+          Repeats Only       | 21     | 4.7143     | 4.0000     | 3.9048     | -0.7143       | -0.8095      
+          Non-Repeats Only   | 167    | 3.1078     | 3.0898     | 3.0898     | -0.0180       | -0.0180          
 
 While the average was almost identical to Bot 6, I still believe my change is an improvement.
 
@@ -727,150 +705,152 @@ This specific function choice was also due to similar functions having a very la
 I then created Bot 8, which has the same estimated repeat probability logic as Bot 7 but also applies the repeat reweighting function.
 The results were as follows:
 
-Category           | Games  | Bot 6 Avg  | Bot 7 Avg  | Bot 8 Avg  | Diff (B7-B6)  | Diff (B8-B6) 
---------------------------------------------------------------------------------------------------
-Overall Era        | 188    | 3.1915     | 3.1809     | 3.1436     | -0.0106       | -0.0479      
-Repeats Only       | 21     | 4.0000     | 3.9048     | 3.5714     | -0.0952       | -0.4286      
-Non-Repeats Only   | 167    | 3.0898     | 3.0898     | 3.0898     | +0.0000       | +0.0000           
+          Category           | Games  | Bot 6 Avg  | Bot 7 Avg  | Bot 8 Avg  | Diff (B7-B6)  | Diff (B8-B6) 
+          --------------------------------------------------------------------------------------------------
+          Overall Era        | 188    | 3.1915     | 3.1809     | 3.1436     | -0.0106       | -0.0479      
+          Repeats Only       | 21     | 4.0000     | 3.9048     | 3.5714     | -0.0952       | -0.4286      
+          Non-Repeats Only   | 167    | 3.0898     | 3.0898     | 3.0898     | +0.0000       | +0.0000           
 
 As hoped, the reweighting significantly improved performance on the repeats without hindering performance on the non-repeats.
 Then again, this probably isn't statistically significant.
 
-Running the bots to find these results took a significant amount of time, so I checked the code to find any further optimisations.
-I realised that in the second lookahead the bot was still evaluating all 4500 words.
-So I added a filter which works similarly to the one in the first pass (taking highest entropy words and most likely solutions).
+          Running the bots to find these results took a significant amount of time, so I checked the code to find any further optimisations.
+          I realised that in the second lookahead the bot was still evaluating all 4500 words.
+          So I added a filter which works similarly to the one in the first pass (taking highest entropy words and most likely solutions).
 
-This was added to Bot 5 (and hence is also applied to its children).
-I then did the repeat era test on bots 5, 6, 7 and 8 to see if there were any behavioural differences.
-All guesses across all bots and games were identical so I decided to keep the change as it gave a decent speedup (turning a 5 hour compute into a 3 hour one).
+          This was added to Bot 5 (and hence is also applied to its children).
+          I then did the repeat era test on bots 5, 6, 7 and 8 to see if there were any behavioural differences.
+          All guesses across all bots and games were identical so I decided to keep the change as it gave a decent speedup (turning a 5 hour compute into a 3 hour one).
 
-My next ideas for accuracy improvements stem from the 0.45 heuristic from earlier.
-To do this, we need to examine the actual expected guesses compared to our heuristic.
+          My next ideas for accuracy improvements stem from the 0.45 heuristic from earlier.
+          To do this, we need to examine the actual expected guesses compared to our heuristic.
 
-I ran a script which looks at buckets Bot 8 encountered and then evaluated all of them to find the true expected guesses compared to the heuristic value.
-The "true" value is found by running the bot on every possible solution and calculating the expectation from that.
+          I ran a script which looks at buckets Bot 8 encountered and then evaluated all of them to find the true expected guesses compared to the heuristic value.
+          The "true" value is found by running the bot on every possible solution and calculating the expectation from that.
 
-I made it cycle through the data, doing all the small buckets first.
-Running overnight, it finished the 91-95 word range.
+          I made it cycle through the data, doing all the small buckets first.
+          Running overnight, it finished the 91-95 word range.
 
-As the first turn is hardcoded, the bot only ever plays games with a few hundred words remaining.
-As the heuristic is run on the buckets these are split into, sampling up to size 95 (and entropy 4.8) is plenty.
+          As the first turn is hardcoded, the bot only ever plays games with a few hundred words remaining.
+          As the heuristic is run on the buckets these are split into, sampling up to size 95 (and entropy 4.8) is plenty.
 
-I then plot the true expected cost against the estimated cost from my heuristic.
-I noticed that for H<0.5 there was a seemingly linear relationship (far below what was predicted).
+          I then plot the true expected cost against the estimated cost from my heuristic.
+          I noticed that for H<0.5 there was a seemingly linear relationship (far below what was predicted).
 
-This is because buckets with that low entropy are dominated by a single word.
-If p is the likelihood of any word in the bucket we have -p*log2(p)-(1-p)log2(1-p)<0.5
-Which then gives p < 0.110 or p > 0.890.
-Hence any bucket with entropy below 0.5 is dominated by a single high probability word.
-If the words were all unlikely then the entropy would be higher.
+          This is because buckets with that low entropy are dominated by a single word.
+          If p is the likelihood of any word in the bucket we have -p*log2(p)-(1-p)log2(1-p)<0.5
+          Which then gives p < 0.110 or p > 0.890.
+          Hence any bucket with entropy below 0.5 is dominated by a single high probability word.
+          If the words were all unlikely then the entropy would be higher.
 
-In this scenario the optimal strategy is to just guess the likely word.
-If we then assume the optimal strategy afterwards is to continue guess the likely word, the expected guesses is:
-E = p1 + 2*p2 + 3*p3 + 4*p4 ...
-Where pi is the probability of the ith most likely word.
-Using that these probabilities sum to 1 we can find that:
-p2 = 1 - p1 - p3 - p4 ...
-So:
-E = p1 + 2*(1 - p1 - p3 - p4 ...) + 3*p3 + 4*p4 + 5*p5...
-E = (2 - p1) + p3 * 2*p4 + 3*p5 ... 
-So E is roughly 2-p1.
-This approximation is good because the remaining terms are tiny,
-and the initial strategy assumption is fine because this scenario is unlikely anyway.
+          In this scenario the optimal strategy is to just guess the likely word.
+          If we then assume the optimal strategy afterwards is to continue guess the likely word, the expected guesses is:
+          E = p1 + 2*p2 + 3*p3 + 4*p4 ...
+          Where pi is the probability of the ith most likely word.
+          Using that these probabilities sum to 1 we can find that:
+          p2 = 1 - p1 - p3 - p4 ...
+          So:
+          E = p1 + 2*(1 - p1 - p3 - p4 ...) + 3*p3 + 4*p4 + 5*p5...
+          E = (2 - p1) + p3 * 2*p4 + 3*p5 ... 
+          So E is roughly 2-p1.
+          This approximation is good because the remaining terms are tiny,
+          and the initial strategy assumption is fine because this scenario is unlikely anyway.
 
-I was going to hardcode the probability for buckets of size 3, as the optimal strategy is always to guess in sequence.
-This gives E = 2-p1+p3 which means that this is a larger estimate in comparison to larger buckets.
+          I was going to hardcode the probability for buckets of size 3, as the optimal strategy is always to guess in sequence.
+          This gives E = 2-p1+p3 which means that this is a larger estimate in comparison to larger buckets.
 
-However, all of these estimates assumes that you must guess in sequence. In reality, guessing one word incorrectly may cut down the remaining ones too.
-There are multiple approximations which could be used (e.g. 2-p1, 2-p1+p3, 3-2p1-p2) but for this reason 2-p1 performs the best.
-It underestimates E in this scenario, bringing it closer to the real-life bound.
-Hence for all buckets of size >=3 and H<0.5 I used this approximation.
+          However, all of these estimates assumes that you must guess in sequence. In reality, guessing one word incorrectly may cut down the remaining ones too.
+          There are multiple approximations which could be used (e.g. 2-p1, 2-p1+p3, 3-2p1-p2) but for this reason 2-p1 performs the best.
+          It underestimates E in this scenario, bringing it closer to the real-life bound.
+          Hence for all buckets of size >=3 and H<0.5 I used this approximation.
 
-For H>=0.5 I then used a logarithmic model due to the distribution shape.
-I fixed the point at H=0.5 (estimating p1=0.89) and got the following formula for H>0.5
+          For H>=0.5 I then used a logarithmic model due to the distribution shape.
+          I fixed the point at H=0.5 (estimating p1=0.89) and got the following formula for H>0.5
 
-E = 1.1100 + 0.7049 * ln(1 + 0.9169 * (H - 0.5))
+          E = 1.1100 + 0.7049 * ln(1 + 0.9169 * (H - 0.5))
 
-I then created Bot 9, which has all the reweighting behaviours as Bot 8, but changes the heuristics from Bot 5.
-As it is therefore different behaviourally to Bot 5, I ran it on all games starting from the beginning.
+          I then created Bot 9, which has all the reweighting behaviours as Bot 8, but changes the heuristics from Bot 5.
+          As it is therefore different behaviourally to Bot 5, I ran it on all games starting from the beginning.
 
-I fear that as the 0.45 heuristic still ranked buckets accordingly, the performance difference may be negligible.
-I ran Bot 9 on the repeat era, to which it beat Bot 8 twice, lost twice and tied 184 times.
+          I fear that as the 0.45 heuristic still ranked buckets accordingly, the performance difference may be negligible.
+          I ran Bot 9 on the repeat era, to which it beat Bot 8 twice, lost twice and tied 184 times.
 
-Category           | Games  | Bot 8 Avg  | Bot 9 Avg  | Diff (B9-B8) 
----------------------------------------------------------------------
-Overall Era        | 188    | 3.1436     | 3.1436     | +0.0000      
-Repeats Only       | 21     | 3.5714     | 3.5714     | +0.0000      
-Non-Repeats Only   | 167    | 3.0898     | 3.0898     | +0.0000     
+          Category           | Games  | Bot 8 Avg  | Bot 9 Avg  | Diff (B9-B8) 
+          ---------------------------------------------------------------------
+          Overall Era        | 188    | 3.1436     | 3.1436     | +0.0000      
+          Repeats Only       | 21     | 3.5714     | 3.5714     | +0.0000      
+          Non-Repeats Only   | 167    | 3.0898     | 3.0898     | +0.0000     
 
-Running it on the non-repeat era gave:
-Category             | Games  | Bot 5 Avg  | Bot 9 Avg  | Diff (B9-B5) 
------------------------------------------------------------------------
-Overall (< 1688)     | 1688   | 3.2921     | 3.2980     | +0.0059      
-Pre-2023             | 561    | 3.4225     | 3.4278     | +0.0053      
-2023 Onwards (<1688) | 1127   | 3.2272     | 3.2334     | +0.0062      
+          Running it on the non-repeat era gave:
+          Category             | Games  | Bot 5 Avg  | Bot 9 Avg  | Diff (B9-B5) 
+          -----------------------------------------------------------------------
+          Overall (< 1688)     | 1688   | 3.2921     | 3.2980     | +0.0059      
+          Pre-2023             | 561    | 3.4225     | 3.4278     | +0.0053      
+          2023 Onwards (<1688) | 1127   | 3.2272     | 3.2334     | +0.0062      
 
-Which is surprisingly worse. However, I then considered when the heuristic is used.
-Guess 1 is hardcoded to be SLATE.
-The bot then finds the best second guess. It does this by simulating the turn after - finding the best third guess using the heuristic.
-The heuristic is therefore used on buckets which have been split by 3 guesses, so should be very small.
-Hence my model based on large buckets is unlikely to do well.
+          Which is surprisingly worse. However, I then considered when the heuristic is used.
+          Guess 1 is hardcoded to be SLATE.
+          The bot then finds the best second guess. It does this by simulating the turn after - finding the best third guess using the heuristic.
+          The heuristic is therefore used on buckets which have been split by 3 guesses, so should be very small.
+          Hence my model based on large buckets is unlikely to do well.
 
-However, having sampled some example scenarios, the bot does often have to use the heuristic on large buckets e.g. between 30 and 40 in size.
-This could be because when guessing there will inevitably be a large pool of words with no letters shared with the current guess.
-I sampled to find the distribution of bucket entropies, unsurprisingly lower entropies were much more common.
-However, when considering accuracy of the final expected guesses figure, the larger buckets are quite important.
-Not only do they have a higher probability, but their relative error leads to a greater change in calculated guesses, because it's an expected value multiplying bucket chance and estimated cost.
-Hence I ran importance sampling scaling the buckets by P*H,
-Where P is the probability of that entropy as found by my broad sampling
-And H is the entropy.
+          However, having sampled some example scenarios, the bot does often have to use the heuristic on large buckets e.g. between 30 and 40 in size.
+          This could be because when guessing there will inevitably be a large pool of words with no letters shared with the current guess.
+          I sampled to find the distribution of bucket entropies, unsurprisingly lower entropies were much more common.
+          However, when considering accuracy of the final expected guesses figure, the larger buckets are quite important.
+          Not only do they have a higher probability, but their relative error leads to a greater change in calculated guesses, because it's an expected value multiplying bucket chance and estimated cost.
+          Hence I ran importance sampling scaling the buckets by P*H,
+          Where P is the probability of that entropy as found by my broad sampling
+          And H is the entropy.
 
-I took 4048 samples from the start of the repeat era to the end of June.
+          I took 4048 samples from the start of the repeat era to the end of June.
 
-I decided to do a piecewise linear model. It was split every 0.25 until H=1, which was a better (and easier to evaluate) estimate than 2-p1.
+          I decided to do a piecewise linear model. It was split every 0.25 until H=1, which was a better (and easier to evaluate) estimate than 2-p1.
 
-  0.00 <= H < 0.25 : E_adj = 0.1769 * H + -0.0045
-  0.25 <= H < 0.50 : E_adj = 0.2062 * H + -0.0119
-  0.50 <= H < 0.75 : E_adj = 0.3437 * H + -0.0806
-  0.75 <= H < 1.00 : E_adj = 0.7361 * H + -0.3749
+            0.00 <= H < 0.25 : E_adj = 0.1769 * H + -0.0045
+            0.25 <= H < 0.50 : E_adj = 0.2062 * H + -0.0119
+            0.50 <= H < 0.75 : E_adj = 0.3437 * H + -0.0806
+            0.75 <= H < 1.00 : E_adj = 0.7361 * H + -0.3749
 
-As the trend lines for [1,2], [2,3], [3,4] followed each other well so I did a single trend line for H>1.
-However, for H>4, E actually decreased. 
-I did some statistical testing which ruled out random noise.
-The explanation is presumably that "trap buckets" are concentrated in the 3-4 range while larger entropies are more diverse.
-However as this trend likely didn't continue I decided to just extend the H>1 line.
+          As the trend lines for [1,2], [2,3], [3,4] followed each other well so I did a single trend line for H>1.
+          However, for H>4, E actually decreased. 
+          I did some statistical testing which ruled out random noise.
+          The explanation is presumably that "trap buckets" are concentrated in the 3-4 range while larger entropies are more diverse.
+          However as this trend likely didn't continue I decided to just extend the H>1 line.
 
-  H >= 1.00        : E_adj = 0.2864 * H + 0.1282
+            H >= 1.00        : E_adj = 0.2864 * H + 0.1282
 
-I then tested this on the non-repeat and repeat eras, and it surprisingly did worse than the previous Bot 9, losing by 2 on repeats and by 16 on non-repeats.
+          I then tested this on the non-repeat and repeat eras, and it surprisingly did worse than the previous Bot 9, losing by 2 on repeats and by 16 on non-repeats.
 
-My theory for this was that the 0.45 just under a cluster of points where H=1, and my models didn't.
-After splitting the linear regression lines between 1 and 2 I noticed that they actually decrease for a bit after H=1 and then increase again.
-Most importantly, they intercepted H=1 at the same place as the 0.45 heuristic.
+          My theory for this was that the 0.45 just under a cluster of points where H=1, and my models didn't.
+          After splitting the linear regression lines between 1 and 2 I noticed that they actually decrease for a bit after H=1 and then increase again.
+          Most importantly, they intercepted H=1 at the same place as the 0.45 heuristic.
 
-After further analysing small trends I came up with this model:
+          After further analysing small trends I came up with this model:
 
-  0.00 <= H < 0.20 : E_adj = 0.1590 * H + -0.0026   | Buckets: 45
-  0.20 <= H < 0.40 : E_adj = 0.2123 * H + -0.0133   | Buckets: 41
-  0.40 <= H < 0.60 : E_adj = 0.2147 * H + -0.0142   | Buckets: 32
-  0.60 <= H < 0.80 : E_adj = 0.4929 * H + -0.1811   | Buckets: 36
-  0.80 <= H < 1.00 : E_adj = 0.7394 * H + -0.3783   | Buckets: 205
-  1.00 <= H < 1.15 : E_adj = -0.4466 * H + 0.8995   | Buckets: 307
-  1.15 <= H < 1.50 : E_adj = 0.4893 * H + -0.1768   | Buckets: 408
-  1.50 <= H < 1.60 : E_adj = 1.1866 * H + -1.2228   | Buckets: 236
-  1.60 <= H < 1.75 : E_adj = -0.4829 * H + 1.4484   | Buckets: 158
-  1.75 <= H < 2.00 : E_adj = 0.5240 * H + -0.3136   | Buckets: 257
-  2.00 <= H < 2.50 : E_adj = 0.0844 * H + 0.5655   | Buckets: 612
-  2.50 <= H < 3.00 : E_adj = 0.4606 * H + -0.3750   | Buckets: 433
-  3.00 <= H < 3.50 : E_adj = 0.2461 * H + 0.2687   | Buckets: 549
-  3.50 <= H < 4.00 : E_adj = 0.3342 * H + -0.0396   | Buckets: 378
-  4.00 <= H < 4.50 : E_adj = -0.3448 * H + 2.6761   | Buckets: 279
-  H >= 4.50       : E_adj = 0.4500 * H + -0.9003   | Buckets: 0
+            0.00 <= H < 0.20 : E_adj = 0.1590 * H + -0.0026   | Buckets: 45
+            0.20 <= H < 0.40 : E_adj = 0.2123 * H + -0.0133   | Buckets: 41
+            0.40 <= H < 0.60 : E_adj = 0.2147 * H + -0.0142   | Buckets: 32
+            0.60 <= H < 0.80 : E_adj = 0.4929 * H + -0.1811   | Buckets: 36
+            0.80 <= H < 1.00 : E_adj = 0.7394 * H + -0.3783   | Buckets: 205
+            1.00 <= H < 1.15 : E_adj = -0.4466 * H + 0.8995   | Buckets: 307
+            1.15 <= H < 1.50 : E_adj = 0.4893 * H + -0.1768   | Buckets: 408
+            1.50 <= H < 1.60 : E_adj = 1.1866 * H + -1.2228   | Buckets: 236
+            1.60 <= H < 1.75 : E_adj = -0.4829 * H + 1.4484   | Buckets: 158
+            1.75 <= H < 2.00 : E_adj = 0.5240 * H + -0.3136   | Buckets: 257
+            2.00 <= H < 2.50 : E_adj = 0.0844 * H + 0.5655   | Buckets: 612
+            2.50 <= H < 3.00 : E_adj = 0.4606 * H + -0.3750   | Buckets: 433
+            3.00 <= H < 3.50 : E_adj = 0.2461 * H + 0.2687   | Buckets: 549
+            3.50 <= H < 4.00 : E_adj = 0.3342 * H + -0.0396   | Buckets: 378
+            4.00 <= H < 4.50 : E_adj = -0.3448 * H + 2.6761   | Buckets: 279
+            H >= 4.50       : E_adj = 0.4500 * H + -0.9003   | Buckets: 0
 
-However, this yielded no significant improvement.
-I tweaked the model further, lowering it for the upper values of H on the basis that if the original heuristic was used to estimate the larger buckets, it will lead to an overestimate in the model.
-However, I couldn't get a significant in the repeat era or the non-repeat era so I'm leaving the heuristic enhancement here and sticking with the 0.45 heuristic for now.
-My theory is that the buckets modelled by Bot 8 don't match the predictions Bot 9 makes, leading to some mismatch and worse guess rankings.
+          However, this yielded no significant improvement.
+          I tweaked the model further, lowering it for the upper values of H on the basis that if the original heuristic was used to estimate the larger buckets, it will lead to an overestimate in the model.
+          However, I couldn't get a significant in the repeat era or the non-repeat era so I'm leaving the heuristic enhancement here and sticking with the 0.45 heuristic for now.
+          My theory is that the buckets modelled by Bot 8 don't match the predictions Bot 9 makes, leading to some mismatch and worse guess rankings.
+
+          Or maybe it's just statistical noise as we're presumably quite close to optimality anyway and the results lie within that range.
 
 That concludes development for now!
 I'll continue to keep track of the performance of Bots 5-8 against WordleBot.

@@ -1,0 +1,597 @@
+import os
+import numpy as np
+import pandas as pd
+from collections import Counter
+from wordfreq import word_frequency
+import nltk
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import cross_val_predict, KFold
+from sklearn.linear_model import Ridge
+
+# 1. Setup & Ingestion (Downloads additional linguistic catalogs for Stage 2 filtering)
+print("Downloading NLTK linguistic corpora...")
+nltk.download('brown', quiet=True)
+nltk.download('reuters', quiet=True)
+nltk.download('gutenberg', quiet=True)
+nltk.download('nps_chat', quiet=True)
+nltk.download('webtext', quiet=True)
+nltk.download('words', quiet=True)
+nltk.download('names', quiet=True)
+
+from nltk.corpus import brown, reuters, gutenberg, nps_chat, webtext
+
+DATA_DIR = os.path.join("..", "data")
+ALLOWED_GUESSES_PATH = os.path.join(DATA_DIR, "allowed_guesses.csv")
+PRIORS_PATH = os.path.join(DATA_DIR, "unseen_cleaned_priors.csv")
+NORVIG_PATH = os.path.join(DATA_DIR, "count_1w.txt")
+SUBTLEX_PATH = os.path.join(DATA_DIR, "subtlex.csv")
+GITHUB_PATH = os.path.join(DATA_DIR, "github.txt")
+
+def safe_read_space_sep(path):
+    with open(path, 'r', encoding='utf-8', errors='ignore') as f:
+        first_line = f.readline().strip().lower()
+    has_header = any(x.isalpha() for x in first_line) and not any(x.isdigit() for x in first_line)
+    if has_header:
+        df_temp = pd.read_csv(path, sep=r'\s+', engine='python')
+        df_temp.columns = ['word', 'count']
+    else:
+        df_temp = pd.read_csv(path, sep=r'\s+', header=None, names=['word', 'count'], engine='python')
+    return df_temp
+
+def safe_read_csv(path):
+    with open(path, 'r', encoding='utf-8', errors='ignore') as f:
+        first_line = f.readline().strip().lower()
+    has_header = any(x.isalpha() for x in first_line) and not first_line.replace(',','').replace('.','').isdigit()
+    if has_header:
+        df_temp = pd.read_csv(path)
+    else:
+        df_temp = pd.read_csv(path, header=None)
+    df_temp.columns = ['word', 'count'] + list(df_temp.columns[2:])
+    return df_temp
+
+allowed_df = pd.read_csv(ALLOWED_GUESSES_PATH, header=None, names=['word'])
+df = pd.DataFrame({'word': allowed_df['word'].astype(str).str.strip().str.lower()}).drop_duplicates().reset_index(drop=True)
+
+priors_df = pd.read_csv(PRIORS_PATH)
+priors_df['word'] = priors_df['word'].astype(str).str.strip().str.lower()
+priors_dict = dict(zip(priors_df['word'], priors_df['prior'].astype(float)))
+df['unseen_prior'] = df['word'].map(lambda w: priors_dict.get(w, 0.0))
+df['is_target'] = (df['unseen_prior'] > 1e-9).astype(int)
+
+# 2. Extract Frequency Features
+norvig_raw = safe_read_space_sep(NORVIG_PATH)
+norvig_dict = dict(zip(norvig_raw['word'].astype(str).str.strip().str.lower(), norvig_raw['count'].astype(float)))
+df['src_1_norvig'] = df['word'].map(lambda w: norvig_dict.get(w, 0.0))
+df['src_2_wordfreq'] = df['word'].apply(lambda w: word_frequency(w, 'en'))
+
+subtlex_raw = safe_read_csv(SUBTLEX_PATH)
+subtlex_dict = dict(zip(subtlex_raw['word'].astype(str).str.strip().str.lower(), subtlex_raw['count'].astype(float)))
+df['src_3_subtlex'] = df['word'].map(lambda w: subtlex_dict.get(w, 0.0))
+
+github_raw = safe_read_space_sep(GITHUB_PATH)
+github_dict = dict(zip(github_raw['word'].astype(str).str.strip().str.lower(), github_raw['count'].astype(float)))
+df['src_4_github'] = df['word'].map(lambda w: github_dict.get(w, 0.0))
+
+news_counts = Counter(tok.lower() for tok in brown.words(categories=['news']))
+df['src_5_nltk_news'] = df['word'].map(lambda w: news_counts[w])
+fiction_counts = Counter(tok.lower() for tok in brown.words(categories=['fiction', 'romance']))
+df['src_6_nltk_fiction'] = df['word'].map(lambda w: fiction_counts[w])
+reuters_counts = Counter(tok.lower() for tok in reuters.words())
+df['src_7_nltk_reuters'] = df['word'].map(lambda w: reuters_counts[w])
+gutenberg_counts = Counter(tok.lower() for tok in gutenberg.words())
+df['src_8_nltk_gutenberg'] = df['word'].map(lambda w: gutenberg_counts[w])
+chat_counts = Counter(tok.lower() for tok in nps_chat.words())
+df['src_9_nltk_chat'] = df['word'].map(lambda w: chat_counts[w])
+web_counts = Counter(tok.lower() for tok in webtext.words())
+df['src_10_nltk_web'] = df['word'].map(lambda w: web_counts[w])
+
+# Apply the NYT Frequency Floor (Clipping at the 85th percentile threshold)
+actual_source_cols = [col for col in df.columns if col.startswith('src_')]
+df[actual_source_cols] = df[actual_source_cols].fillna(0.0)
+
+log_cols = []
+for col in actual_source_cols:
+    log_col = 'log_' + col
+    non_zeros = df[df[col] > 0][col]
+    eps = non_zeros.min() * 0.1 if not non_zeros.empty else 1e-10
+    
+    raw_log = np.log10(df[col] + eps)
+    floor_threshold = raw_log.quantile(0.85) 
+    df[log_col] = raw_log.clip(upper=floor_threshold)
+    
+    log_cols.append(log_col)
+
+print("Ingestion, processing, and feature scaling constraints built successfully.")
+
+# ----------------------------------------
+
+from sklearn.ensemble import HistGradientBoostingRegressor
+
+# 1. Refined Plural Logic (Pure deterministic exclusions)
+safe_s_endings = ('ss', 'us', 'os', 'is') 
+non_plural_s = ['trans', 'corps', 'lens', 'alias', 'atlas', 'chaos', 'canvas', 'brass', 'glass', 'guess']
+
+df['is_standard_plural'] = (
+    df['word'].str.endswith('s') & 
+    ~df['word'].str.endswith(safe_s_endings) & 
+    ~df['word'].isin(non_plural_s)
+)
+df['is_excluded'] = df['is_standard_plural'] 
+
+# 2. Generalized Feature Engineering (Non-Overfitting)
+# Feature A: Cross-corpus breadth (How many of the 10 sources contain this word?)
+df['src_breadth'] = (df[actual_source_cols] > 0).sum(axis=1)
+
+# Feature B: Conversational vs. Technical Skew
+conversational_cols = ['log_src_2_wordfreq', 'log_src_3_subtlex', 'log_src_6_nltk_fiction', 'log_src_10_nltk_web']
+tech_cols = ['log_src_4_github', 'log_src_7_nltk_reuters']
+
+df['conversational_mean'] = df[conversational_cols].mean(axis=1)
+df['tech_skew'] = df[tech_cols].mean(axis=1) - df['conversational_mean']
+
+feature_cols = log_cols + ['src_breadth', 'conversational_mean', 'tech_skew']
+
+# 3. Model Preparation & Ensembled Out-Of-Fold Cross-Validation
+X = StandardScaler().fit_transform(df[feature_cols].values)
+
+def to_logit(y, eps=1e-5):
+    y_safe = np.clip(y, eps, 1.0 - eps)
+    return np.log(y_safe / (1.0 - y_safe))
+
+def to_sigmoid(y_pred):
+    return 1.0 / (1.0 + np.exp(-y_pred))
+
+y_transformed = to_logit(df['unseen_prior'].values)
+
+cv_strategy = KFold(n_splits=5, shuffle=True, random_state=42)
+
+# Blended Estimator: Ridge (Smooth Linear) + HistGradientBoosting (Non-Linear Consensus)
+ridge = Ridge(alpha=10.0, random_state=42)
+hgb = HistGradientBoostingRegressor(max_iter=100, learning_rate=0.05, min_samples_leaf=20, random_state=42)
+
+oof_ridge = cross_val_predict(ridge, X, y_transformed, cv=cv_strategy, n_jobs=-1)
+oof_hgb = cross_val_predict(hgb, X, y_transformed, cv=cv_strategy, n_jobs=-1)
+
+# 50/50 Ensemble Blend
+df['oof_predicted_prob'] = to_sigmoid(0.5 * oof_ridge + 0.5 * oof_hgb)
+
+# Rank directly using the model output probability
+df['ranking_prob'] = df['oof_predicted_prob']
+
+# Stage 1 Rank & Stage 2 Solutions Selection
+df['stage_1_rank'] = df['ranking_prob'].rank(ascending=False, method='first').astype(int)
+
+df['is_predicted_solution'] = (
+    (df['stage_1_rank'] <= 4500) & 
+    (~df['is_excluded'])
+)
+
+# 4. Metrics & Diagnostic Outputs
+actual_target_count = df['is_target'].sum()
+predicted_solution_count = df['is_predicted_solution'].sum()
+correctly_captured = df[(df['is_target'] == 1) & (df['is_predicted_solution'] == True)].shape[0]
+
+print(f"=== REVERSE ENGINEERING METRICS ===")
+print(f"Total True NYT Targets:       {actual_target_count}")
+print(f"Total Predicted Solutions:    {predicted_solution_count}")
+print(f"Targets Successfully Captured:{correctly_captured} ({correctly_captured/actual_target_count:.1%})")
+print(f"Missed Targets:               {actual_target_count - correctly_captured}\n")
+
+# --- PRIORS PERFORMANCE BREAKDOWN ---
+# Separate targets into High Prior (Core original solutions) vs Lower Prior (Extended pool)
+median_prior = df[df['is_target'] == 1]['unseen_prior'].median()
+high_prior_targets = df[(df['is_target'] == 1) & (df['unseen_prior'] >= median_prior)]
+low_prior_targets = df[(df['is_target'] == 1) & (df['unseen_prior'] < median_prior)]
+
+hp_captured = high_prior_targets['is_predicted_solution'].sum()
+lp_captured = low_prior_targets['is_predicted_solution'].sum()
+
+print("=== PRIORS BREAKDOWN ===")
+print(f"High-Prior Targets Captured: {hp_captured} / {len(high_prior_targets)} ({hp_captured/len(high_prior_targets):.1%})")
+print(f"Low-Prior Targets Captured:  {lp_captured} / {len(low_prior_targets)} ({lp_captured/len(low_prior_targets):.1%})")
+
+# Check -ed past tense words specifically to ensure no anti-ed bias creeping back
+ed_targets = df[(df['is_target'] == 1) & (df['word'].str.endswith('ed'))]
+ed_captured = ed_targets['is_predicted_solution'].sum()
+print(f"Valid '-ed' Targets Captured: {ed_captured} / {len(ed_targets)} ({ed_captured/len(ed_targets):.1%})\n")
+
+# --- BOUNDARY ANALYSIS: LOWEST RANKED CAPTURED WORDS ---
+captured_targets = df[(df['is_target'] == 1) & (df['is_predicted_solution'] == True)]
+lowest_ranked_captured = captured_targets.sort_values('stage_1_rank', ascending=False).head(15)
+
+print("=== LOWEST RANKED CAPTURED SOLUTIONS (Rank ~4000-4500 Boundary) ===")
+print(lowest_ranked_captured[['word', 'stage_1_rank', 'unseen_prior']].to_string(index=False))
+
+# ----------------------------------------
+
+# 1. Force inclusion of all true NYT Target Solutions (3,209 words)
+df['is_in_4500_guess_list'] = False
+df.loc[df['is_target'] == 1, 'is_in_4500_guess_list'] = True
+
+# 2. Calculate remaining slots needed to reach exactly 4,500
+total_target_slots = df['is_target'].sum()
+slots_to_fill = 4500 - total_target_slots
+
+# 3. Identify top candidate non-target words
+# Notice we DO NOT exclude plurals here, as WordleBot permits familiar plurals as guess suggestions
+non_target_candidates = df[
+    (df['is_target'] == 0)
+].sort_values('oof_predicted_prob', ascending=False)
+
+# Select top non-target filler words to complete the 4,500 list
+filler_words = non_target_candidates.head(slots_to_fill)
+df.loc[filler_words.index, 'is_in_4500_guess_list'] = True
+
+# Create final 4,500 DataFrame sorted by model rank
+guess_list_4500_df = df[df['is_in_4500_guess_list']].sort_values('stage_1_rank', ascending=True).reset_index(drop=True)
+
+# 4. Extract Diagnostic Subsets
+filler_df = df[df['is_in_4500_guess_list'] & (df['is_target'] == 0)]
+
+plurals_in_filler = filler_df[filler_df['is_standard_plural']]
+ed_past_in_filler = filler_df[filler_df['word'].str.endswith('ed')]
+other_fillers = filler_df[~filler_df['is_standard_plural'] & ~filler_df['word'].str.endswith('ed')]
+
+# Check how many of these filler words natively placed in the top 4,500 rank without forcing targets
+natively_in_top_4500 = filler_df[filler_df['stage_1_rank'] <= 4500]
+
+# 5. Output Diagnostic Reports
+print("=== 4,500 WORD GUESS LIST GENERATION METRICS ===")
+print(f"Total 4,500 Guess List Size:         {len(guess_list_4500_df)}")
+print(f"  -> True NYT Target Solutions:      {total_target_slots} (100.0% included)")
+print(f"  -> Non-Target Familiar Guesses:    {len(filler_df)}\n")
+
+print("=== BREAKDOWN OF THE NON-TARGET GUESS FILLERS ===")
+print(f"  -> Standard Plurals (ending in 's'): {len(plurals_in_filler)} ({len(plurals_in_filler)/len(filler_df):.1%})")
+print(f"  -> Simple Past Tenses (ending 'ed'): {len(ed_past_in_filler)} ({len(ed_past_in_filler)/len(filler_df):.1%})")
+print(f"  -> Other Familiar Non-Targets:       {len(other_fillers)} ({len(other_fillers)/len(filler_df):.1%})\n")
+
+print("=== MODEL ALIGNMENT DIAGNOSTIC ===")
+print(f"Non-target guesses natively ranked in Top 4500 by model: {len(natively_in_top_4500)} / {len(filler_df)} ({len(natively_in_top_4500)/len(filler_df):.1%})")
+print("  (High alignment confirms your frequency ensemble naturally identifies high-utility guess words)\n")
+
+print("=== TOP 10 PLURAL GUESS SUGGESTIONS ADDED ===")
+print(plurals_in_filler[['word', 'stage_1_rank', 'oof_predicted_prob']].head(10).to_string(index=False))
+
+print("\n=== TOP 10 PAST-TENSE ('ed') GUESS SUGGESTIONS ADDED ===")
+print(ed_past_in_filler[['word', 'stage_1_rank', 'oof_predicted_prob']].head(10).to_string(index=False))
+
+print("\n=== TOP 10 GENERAL NON-TARGET GUESS SUGGESTIONS ADDED ===")
+print(other_fillers[['word', 'stage_1_rank', 'oof_predicted_prob']].head(10).to_string(index=False))
+
+# 6. Save Full Frequency Heuristics & Model Outputs
+OUTPUT_PATH = os.path.join(DATA_DIR, "full_frequency_heuristics.csv")
+
+# Save the primary DataFrame (df) which contains all raw frequencies, 
+# log-scaled features, model probabilities, and rankings.
+df.to_csv(OUTPUT_PATH, index=False)
+
+print(f"=== EXPORT SUCCESSFUL ===")
+print(f"Full heuristics and rankings saved to: {OUTPUT_PATH}")
+
+# ----------------------------------------
+
+
+import os
+
+# Define output path
+output_path = os.path.join(DATA_DIR, "wordle_4500_guesses_2.csv")
+
+# Save words (sorted by model rank) to CSV
+# guess_list_4500_df[['word']].to_csv(output_path, index=False)
+
+# print(f"Successfully saved 4,500 word guess list to: {output_path}")
+
+
+# ----------------------------------------
+
+# Prepare 4,500 word priors dataframe
+priors_4500_df = df[df['is_in_4500_guess_list']].copy()
+
+# Assign prior = 0.003896 to non-target guess fillers
+priors_4500_df['final_prior'] = np.where(
+    priors_4500_df['is_target'] == 1, 
+    priors_4500_df['unseen_prior'], 
+    0.003896
+)
+'''
+# Export to CSV
+priors_path = os.path.join(DATA_DIR, "priors_4500_2.csv")
+priors_4500_df[['word', 'final_prior']].to_csv(priors_path, index=False)
+print(f"Saved 4,500 priors file to: {priors_path}")
+'''
+
+# ----------------------------------------
+
+# 1. Load Past Answers
+past_answers_path = os.path.join(DATA_DIR, "past_answers.csv")
+df_past = pd.read_csv(past_answers_path)
+df_past['solution'] = df_past['solution'].astype(str).str.lower().str.strip()
+
+# 2. Merge past answers with your main df to get rank AND actual list inclusion
+df_past_ranked = df_past.merge(
+    df[['word', 'stage_1_rank', 'is_target', 'is_in_4500_guess_list']], 
+    left_on='solution', right_on='word', how='left'
+)
+
+# 3. Calculate distributions
+total_past = len(df_past)
+in_1000 = (df_past_ranked['stage_1_rank'] <= 1000).sum()
+in_2000 = (df_past_ranked['stage_1_rank'] <= 2000).sum()
+in_3000 = (df_past_ranked['stage_1_rank'] <= 3000).sum()
+
+# Use the boolean columns to check exact list inclusion
+in_target_list = df_past_ranked['is_target'].sum()
+in_4500_list = df_past_ranked['is_in_4500_guess_list'].sum()
+missing = df_past_ranked['word'].isna().sum()
+
+# 4. Output Summary
+print("--- PAST SOLUTIONS: OOF MODEL RANK & LIST INCLUSION ---")
+print(f"Total Past Answers Analyzed: {total_past:,}\n")
+
+print(f"Top 1,000 Ranked: {in_1000:>4}  ({(in_1000/total_past*100):>5.1f}%)")
+print(f"Top 2,000 Ranked: {in_2000:>4}  ({(in_2000/total_past*100):>5.1f}%)")
+print(f"Top 3,000 Ranked: {in_3000:>4}  ({(in_3000/total_past*100):>5.1f}%)")
+print("-" * 52)
+print(f"In NYT Target List (~3.2k): {int(in_target_list):>4}  ({(in_target_list/total_past*100):>5.2f}%)")
+print(f"In 4,500 Guess List:        {int(in_4500_list):>4}  ({(in_4500_list/total_past*100):>5.2f}%)")
+
+if missing > 0:
+    print(f"\nPast Answers completely missing from corpus: {missing}")
+
+# ----------------------------------------
+
+# 1. Define the frequency threshold for the prior = 1 category
+# We isolate words with unseen_prior == 1 to find the median of the frequency heuristic
+prior_1_words = df[df['unseen_prior'] == 1.0]
+median_freq_heuristic = prior_1_words['oof_predicted_prob'].median()
+
+# 2. Merge past solutions with our features to classify their states
+df_hmm = df_past.copy()
+df_hmm['game_index'] = df_hmm.index
+
+# Merge to bring in is_target, unseen_prior, and oof_predicted_prob
+df_hmm = df_hmm.merge(
+    df[['word', 'is_target', 'unseen_prior', 'oof_predicted_prob']], 
+    left_on='solution', right_on='word', how='left'
+)
+
+# Fill any missing past answers as non-targets with 0 frequency
+df_hmm['is_target'] = df_hmm['is_target'].fillna(0)
+df_hmm['unseen_prior'] = df_hmm['unseen_prior'].fillna(0)
+df_hmm['oof_predicted_prob'] = df_hmm['oof_predicted_prob'].fillna(0)
+
+# 3. State Classification Logic
+def classify_hmm_state(row):
+    is_tgt = row['is_target']
+    prior = row['unseen_prior']
+    freq = row['oof_predicted_prob']
+    
+    if is_tgt == 0:
+        return 'S1: Not in 3200'
+    elif prior < 1.0:
+        return 'S2: In 3200 (Prior < 1)'
+    else:
+        if freq >= median_freq_heuristic:
+            return 'S4: Prior=1 (Upper Half Freq)'
+        else:
+            return 'S3: Prior=1 (Lower Half Freq)'
+
+df_hmm['hmm_state'] = df_hmm.apply(classify_hmm_state, axis=1)
+
+# 4. Function to compute and print Transition Matrices vs Random Chance
+def analyze_hmm_transitions(data, label):
+    print(f"=== {label} ===")
+    print(f"Total sequences analyzed: {len(data)}")
+    
+    # Calculate Random Chance (Marginal Probabilities / Steady State)
+    marginals = data['hmm_state'].value_counts(normalize=True).sort_index()
+    print("\nRandom Chance (Marginal Probabilities):")
+    for state, prob in marginals.items():
+        print(f"  {state:<30} {prob:.2%}")
+        
+    # Calculate Transition Matrix (Row = State t, Column = State t+1)
+    # .shift(1) represents the previous day's state
+    transitions = pd.crosstab(
+        data['hmm_state'].shift(1), 
+        data['hmm_state'], 
+        normalize='index'
+    )
+    
+    print("\nTransition Matrix (Row = From Day t, Col = To Day t+1):")
+    # Format the matrix as percentages for readability
+    formatted_matrix = transitions.apply(lambda s: s.map("{:.2%}".format))
+    print(formatted_matrix.to_string())
+    print("\n" + "-"*75 + "\n")
+
+# 5. Run analysis on both datasets
+# All games (including the 0-480 forced prior=1 overrides)
+analyze_hmm_transitions(df_hmm, "HMM TRANSITIONS: ALL GAMES (0 to Present)")
+
+# Exclude the shaky early data (Game 480 onwards only)
+df_hmm_recent = df_hmm[df_hmm['game_index'] >= 480].copy()
+analyze_hmm_transitions(df_hmm_recent, "HMM TRANSITIONS: RECENT GAMES (Game 480+ Only)")
+
+# ----------------------------------------
+
+# 1. Flag obscure words and their preceding states
+# 'S2' was our obscure state (Prior < 1)
+df_hmm['is_obscure'] = (df_hmm['hmm_state'] == 'S2: In 3200 (Prior < 1)').astype(int)
+df_hmm['prev_is_obscure'] = df_hmm['is_obscure'].shift(1).fillna(0).astype(int)
+
+# 2. Define year (using 'date' column if present, otherwise game_index mapping)
+if 'date' in df_hmm.columns:
+    df_hmm['era'] = pd.to_datetime(df_hmm['date']).dt.year.astype(str)
+else:
+    def get_year(game_idx):
+        if game_idx < 196:
+            return "2021"
+        elif game_idx < 561:
+            return "2022"
+        elif game_idx < 926:
+            return "2023"
+        elif game_idx < 1292:
+            return "2024"
+        elif game_idx < 1657:
+            return "2025"
+        else:
+            return "2026"
+    df_hmm['era'] = df_hmm['game_index'].apply(get_year)
+
+# 3. Calculate streakiness per year
+era_order = sorted(df_hmm['era'].unique())
+results = []
+
+for era in era_order:
+    era_df = df_hmm[df_hmm['era'] == era]
+    total_words = len(era_df)
+    
+    if total_words == 0:
+        continue
+        
+    obscure_count = era_df['is_obscure'].sum()
+    base_rate = obscure_count / total_words if total_words > 0 else 0
+    
+    # Obscure to Obscure transitions
+    prev_obscure_count = era_df['prev_is_obscure'].sum()
+    obscure_streak_count = era_df[(era_df['is_obscure'] == 1) & (era_df['prev_is_obscure'] == 1)].shape[0]
+    streak_prob = obscure_streak_count / prev_obscure_count if prev_obscure_count > 0 else 0.0
+        
+    results.append({
+        'Split': f"Year {era}",
+        'Total_Words': total_words,
+        'Base_Obscure_Rate': f"{base_rate:.2%}",
+        'Obs_to_Obs_Prob': f"{streak_prob:.2%}",
+        'Obscure_Streaks': obscure_streak_count
+    })
+
+# 4. Format the output benchmark table
+print("--- PAST WORDLE SOLUTIONS 'OBSCURENESS HEAT' BY YEAR ---")
+print(f"{'Split':<20} {'Total_Words':<12} {'Base_Obscure_Rate':<18} {'Obs_to_Obs_Prob':<18} {'Obscure_Streaks'}")
+
+for r in results:
+    print(f"{r['Split']:<20} {r['Total_Words']:<12} {r['Base_Obscure_Rate']:<18} {r['Obs_to_Obs_Prob']:<18} {r['Obscure_Streaks']}")
+    
+# Overall Dataset Metrics
+overall_base = df_hmm['is_obscure'].sum() / len(df_hmm)
+overall_prev_obs = df_hmm['prev_is_obscure'].sum()
+overall_streak = df_hmm[(df_hmm['is_obscure'] == 1) & (df_hmm['prev_is_obscure'] == 1)].shape[0]
+overall_streak_prob = overall_streak / overall_prev_obs if overall_prev_obs > 0 else 0
+
+print("-" * 88)
+print(f"Overall Dataset Base Obscure Rate:      {overall_base:.2%}")
+print(f"Overall Dataset Obs->Obs Transition Prob: {overall_streak_prob:.2%}")
+
+# ----------------------------------------
+
+# Count how many winning words had an unseen_prior of exactly 1.0
+orig_era = df_hmm[df_hmm['game_index'] < 480]
+nyt_era = df_hmm[df_hmm['game_index'] >= 480]
+
+orig_ones = (orig_era['unseen_prior'] == 1.0).sum()
+orig_total = len(orig_era)
+
+nyt_ones = (nyt_era['unseen_prior'] == 1.0).sum()
+nyt_total = len(nyt_era)
+
+# Calculate percentages, handling potential division by zero
+orig_pct = orig_ones / orig_total if orig_total > 0 else 0
+nyt_pct = nyt_ones / nyt_total if nyt_total > 0 else 0
+
+print("--- 'UNSEEN PRIOR = 1.0' COMPARISON ---")
+print(f"Original Era (Games 0-479): {orig_ones:4} / {orig_total:<4} ({orig_pct:.2%})")
+print(f"NYT Era (Games 480+):       {nyt_ones:4} / {nyt_total:<4} ({nyt_pct:.2%})")
+
+# ----------------------------------------
+
+import os
+import numpy as np
+import pandas as pd
+
+# 1. Define file paths (uses DATA_DIR if defined, otherwise defaults to "data")
+data_dir = DATA_DIR if 'DATA_DIR' in globals() else "data"
+priors_path = os.path.join(data_dir, "priors_4500.csv")
+past_answers_path = os.path.join(data_dir, "past_answers.csv")
+
+# 2. Load Priors CSV into a new frame (handles CSV with or without header)
+df_priors_temp = pd.read_csv(priors_path, header=None)
+try:
+    float(df_priors_temp.iloc[0, 1])
+    # No header row present
+    df_priors = pd.read_csv(priors_path, header=None, names=['word', 'prior'])
+except (ValueError, TypeError):
+    # Header row exists
+    df_priors = pd.read_csv(priors_path)
+    df_priors.rename(columns={df_priors.columns[0]: 'word', df_priors.columns[1]: 'prior'}, inplace=True)
+
+df_priors['word'] = df_priors['word'].astype(str).str.lower().str.strip()
+df_priors['prior'] = pd.to_numeric(df_priors['prior'], errors='coerce').fillna(0.0)
+
+# 3. Load Past Answers CSV into a new frame
+df_past = pd.read_csv(past_answers_path)
+df_past['solution'] = df_past['solution'].astype(str).str.lower().str.strip()
+
+# 4. Merge past answers directly with new priors frame
+df_merged = df_past.merge(df_priors[['word', 'prior']], left_on='solution', right_on='word', how='left')
+
+# 5. Calculate and display overall threshold summary
+thresholds = [0.004] + [round(x, 1) for x in np.arange(0.1, 1.0, 0.1)]
+total_past = len(df_merged)
+
+print("--- PAST SOLUTIONS: PRIOR VALUE DISTRIBUTION SUMMARY ---")
+print(f"Total Past Answers Analyzed: {total_past:,}\n")
+
+print(f"{'Threshold':<12} | {'Count Below':<12} | {'Percentage':<12}")
+print("-" * 42)
+
+for t in thresholds:
+    count_below = (df_merged['prior'] < t).sum()
+    pct = (count_below / total_past) * 100
+    
+    thresh_str = f"< {t:.3f}" if t < 0.01 else f"< {t:.1f}"
+    print(f"{thresh_str:<12} | {count_below:>12,} | {pct:>11.2f}%")
+
+print("-" * 42)
+
+missing_count = df_merged['prior'].isna().sum()
+if missing_count > 0:
+    print(f"\nNote: {missing_count} past answer(s) were not found in {os.path.basename(priors_path)}.")
+
+# 6. Detailed Word & Prior Breakdown for Each Stage Range
+print("\n" + "=" * 80)
+print("--- DETAILED WORDS AND PRIORS BY STAGE / THRESHOLD RANGE ---")
+print("=" * 80)
+
+# Define range boundaries: [0.0, 0.004, 0.1, 0.2, ..., 0.9, 1.0+]
+bins = [0.0] + thresholds + [np.inf]
+
+for i in range(len(bins) - 1):
+    low = bins[i]
+    high = bins[i+1]
+    
+    # Filter words falling into current stage range
+    if low == 0.0:
+        stage_words = df_merged[df_merged['prior'] < high].sort_values(by='prior')
+        label = f"Stage 1: Prior < {high:.3f}"
+    elif high == np.inf:
+        stage_words = df_merged[df_merged['prior'] >= low].sort_values(by='prior')
+        label = f"Stage {i+1}: Prior >= {low:.1f}"
+    else:
+        stage_words = df_merged[(df_merged['prior'] >= low) & (df_merged['prior'] < high)].sort_values(by='prior')
+        low_str = f"{low:.3f}" if low < 0.01 else f"{low:.1f}"
+        high_str = f"{high:.3f}" if high < 0.01 else f"{high:.1f}"
+        label = f"Stage {i+1}: Prior Range [{low_str} to < {high_str})"
+    
+    print(f"\n>>> {label} ({len(stage_words)} words) <<<")
+    print("-" * 80)
+    
+    if stage_words.empty:
+        print("  (No past solution words fall in this range)")
+    else:
+        # Format words and priors into clean 4-column output
+        word_list = [f"{row['solution']}: {row['prior']:.6f}" for _, row in stage_words.iterrows()]
+        for j in range(0, len(word_list), 4):
+            print("  " + "   ".join(f"{item:<22}" for item in word_list[j:j+4]))
+
+# ----------------------------------------
+

@@ -189,3 +189,6 @@ game_num,target,guesses,guess_count,failed,is_repeat,days_since_last,g_bar,base_
 1876,privy,slate-crony-privy,3,False,False,1,8.83,0.114318,0.024572
 1877,clunk,slate-blind-clunk,3,False,False,2,8.83,0.113175,0.037336
 1878,snipe,slate-prion-snipe,3,False,False,3,8.83,0.112043,0.049842
+1879,fence,slate-crump-fence,3,False,False,4,8.83,0.110922,0.062093
+1880,wimpy,slate-crony-bumpy-wimpy,4,False,False,5,8.83,0.109813,0.074095
+1881,crash,slate-crash,2,False,False,6,8.83,0.108715,0.085851

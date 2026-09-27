@@ -1,0 +1,45 @@
+import os
+
+# Define the file paths based on the workspace structure
+comparisons = [
+    ("Bot 5", "../data/bot5_chronological_results_2.csv", "../data/backups/bot5.csv"),
+    ("Bot 6", "../data/bot6_chronological_results.csv", "../data/backups/bot6.csv"),
+    ("Bot 7", "../data/bot7_chronological_results.csv", "../data/backups/bot7.csv"),
+    ("Bot 8", "../data/bot8_chronological_results.csv", "../data/backups/bot8.csv")
+]
+
+for bot_name, main_path, backup_path in comparisons:
+    print(f"--- Checking {bot_name} ---")
+    
+    if not os.path.exists(main_path):
+        print(f"File not found: {main_path}\n")
+        continue
+    if not os.path.exists(backup_path):
+        print(f"File not found: {backup_path}\n")
+        continue
+        
+    with open(main_path, 'r') as f_main, open(backup_path, 'r') as f_backup:
+        main_lines = f_main.readlines()
+        backup_lines = f_backup.readlines()
+        
+    mismatches = 0
+    max_len = max(len(main_lines), len(backup_lines))
+    
+    for i in range(max_len):
+        # Handle cases where files might be different lengths
+        main_line = main_lines[i].strip() if i < len(main_lines) else "<EOF>"
+        backup_line = backup_lines[i].strip() if i < len(backup_lines) else "<EOF>"
+        
+        if main_line != backup_line:
+            mismatches += 1
+            print(f"Line {i + 1}:")
+            print(f"  Main   : {main_line}")
+            print(f"  Backup : {backup_line}")
+            
+    if mismatches == 0:
+        print("Files are completely identical.\n")
+    else:
+        print(f"Found {mismatches} mismatch(es) in {bot_name}.\n")
+
+# ----------------------------------------
+

@@ -1,0 +1,280 @@
+import pandas as pd
+from pathlib import Path
+
+# Setup paths
+results_path = '../data/bot3_15k_results.csv'
+priors_path = '../data/priors_4500_2.csv'
+
+# 1. Load Data
+df_results = pd.read_csv(results_path)
+
+# Load priors. 
+df_priors = pd.read_csv(priors_path, header=None)
+df_priors = df_priors.rename(columns={0: 'word', 1: 'weight'})
+df_priors['word'] = df_priors['word'].astype(str).str.lower()
+
+# Force the weight column to be a float. 
+# errors='coerce' will turn any header strings into NaN, which we can drop safely.
+df_priors['weight'] = pd.to_numeric(df_priors['weight'], errors='coerce')
+df_priors = df_priors.dropna(subset=['weight'])
+
+# 2. Isolate the 4,500 common words
+df_common = df_results[df_results['is_common'] == True].copy()
+
+# 3. Calculate Unweighted Average
+unweighted_avg = df_common['guess_count'].mean()
+
+# 4. Merge to align weights with the exact targets evaluated
+df_merged = df_common.merge(df_priors[['word', 'weight']], left_on='target', right_on='word', how='inner')
+
+# 5. Calculate Weighted Average
+weighted_avg = (df_merged['guess_count'] * df_merged['weight']).sum() / df_merged['weight'].sum()
+
+# 6. Output Summary
+print(f"--- BOT 3 PERFORMANCE (COMMON WORDS) ---")
+print(f"Total Words Evaluated:      {len(df_common):,}")
+print(f"Unweighted Average Guesses: {unweighted_avg:.4f}")
+print(f"Weighted Average Guesses:   {weighted_avg:.4f}")
+print("-" * 40)
+print(f"Win Rate (<= 6 Guesses):    {(df_common['won_in_6'].mean() * 100):.2f}%")
+print(f"Max Guesses Required:       {df_common['guess_count'].max()}")
+
+# ----------------------------------------
+
+import pandas as pd
+from pathlib import Path
+
+# Setup paths
+results_path = '../data/bot3_15k_results.csv'
+past_answers_path = '../data/past_answers.csv'
+
+# 1. Load Data
+df_results = pd.read_csv(results_path)
+df_past = pd.read_csv(past_answers_path)
+
+# Ensure dates are parsed correctly and text is clean
+df_past['date'] = pd.to_datetime(df_past['date'])
+df_past['solution'] = df_past['solution'].astype(str).str.lower().str.strip()
+
+# 2. Merge bot results with historical answers
+df_merged = df_past.merge(df_results, left_on='solution', right_on='target', how='inner')
+
+# 3. Create Time Splits
+def assign_era(row):
+    # Game 0 to 479 captures the original curated list
+    if row['game_num'] < 480:
+        return "Original Era (Games 0-479)"
+    else:
+        # Time split the rest by Year
+        return f"NYT Era ({row['date'].year})"
+
+df_merged['Split'] = df_merged.apply(assign_era, axis=1)
+
+# 4. Calculate Grouped Metrics
+summary = df_merged.groupby('Split').agg(
+    Total_Words=('target', 'count'),
+    Avg_Guesses=('guess_count', 'mean'),
+    Win_Rate=('won_in_6', lambda x: f"{(x.mean() * 100):.2f}%"),
+    Max_Guesses=('guess_count', 'max')
+).reset_index()
+
+# Sort to ensure Original Era is first, followed by NYT years chronologically
+summary = summary.sort_values(by='Split')
+
+# Format the average guesses
+summary['Avg_Guesses'] = summary['Avg_Guesses'].apply(lambda x: f"{x:.4f}")
+
+# 5. Output Results
+print("--- PAST WORDLE SOLUTIONS BENCHMARK ---")
+print(summary.to_string(index=False, justify='left'))
+
+print("-" * 65)
+overall_avg = df_merged['guess_count'].mean()
+overall_win = df_merged['won_in_6'].mean() * 100
+print(f"Overall Past Solutions Avg:      {overall_avg:.4f}")
+print(f"Overall Past Solutions Win Rate: {overall_win:.2f}%")
+
+# ----------------------------------------
+
+# 1. All 15,000 Words
+avg_15k = df_results['guess_count'].mean()
+
+# 2. All 4,500 Words
+df_merged_4500 = df_results.merge(df_priors, left_on='target', right_on='word', how='inner')
+unweighted_4500 = df_merged_4500['guess_count'].mean()
+weighted_4500 = (df_merged_4500['guess_count'] * df_merged_4500['weight']).sum() / df_merged_4500['weight'].sum()
+
+# 3. NYT Target List (~3,200 Words)
+# Load the original unmodified priors file to identify which words are true targets
+original_priors_path = '../data/unseen_cleaned_priors.csv'
+df_original = pd.read_csv(original_priors_path)
+df_original['word'] = df_original['word'].astype(str).str.strip().str.lower()
+
+# In your frequency script, targets were strictly those with an original prior > 1e-9
+true_target_words = set(df_original[df_original['prior'] > 1e-9]['word'])
+
+# Filter our merged results down to just those true targets
+df_merged_3200 = df_merged_4500[df_merged_4500['word'].isin(true_target_words)].copy()
+unweighted_3200 = df_merged_3200['guess_count'].mean()
+weighted_3200 = (df_merged_3200['guess_count'] * df_merged_3200['weight']).sum() / df_merged_3200['weight'].sum()
+
+# 4. Compile and Display Comparison
+comparison_data = [
+    {
+        "Dataset": "All 15k Words (Full Dictionary)",
+        "Count": len(df_results),
+        "Unweighted Avg": f"{avg_15k:.4f}",
+        "Weighted Avg": "N/A" # No prior weights for obscure words
+    },
+    {
+        "Dataset": "Top 4,500 Words",
+        "Count": len(df_merged_4500),
+        "Unweighted Avg": f"{unweighted_4500:.4f}",
+        "Weighted Avg": f"{weighted_4500:.4f}"
+    },
+    {
+        "Dataset": "NYT Target List (~3,200 Words)",
+        "Count": len(df_merged_3200),
+        "Unweighted Avg": f"{unweighted_3200:.4f}",
+        "Weighted Avg": f"{weighted_3200:.4f}"
+    }
+]
+
+df_comparison = pd.DataFrame(comparison_data)
+
+print("--- BOT SUMMARY AVERAGES ---")
+print(df_comparison.to_string(index=False, justify='left'))
+
+# ----------------------------------------
+
+import pandas as pd
+
+# 0. Load Bot 2 Results and Priors
+bot2_results_path = '../data/bot2_15k_results.csv'
+priors_path = '../data/priors_4500_2.csv'          
+original_priors_path = '../data/unseen_cleaned_priors.csv'
+
+df_results = pd.read_csv(bot2_results_path)
+df_priors = pd.read_csv(priors_path)
+
+# Standardize df_priors columns (Col 0 = word, Col 1 = weight)
+df_priors = df_priors.rename(columns={
+    df_priors.columns[0]: 'word', 
+    df_priors.columns[1]: 'weight'
+})
+df_priors['word'] = df_priors['word'].astype(str).str.strip().str.lower()
+df_results['target'] = df_results['target'].astype(str).str.strip().str.lower()
+
+# 1. All 15,000 Words
+avg_15k = df_results['guess_count'].mean()
+
+# 2. All 4,500 Words
+df_merged_4500 = df_results.merge(df_priors, left_on='target', right_on='word', how='inner')
+unweighted_4500 = df_merged_4500['guess_count'].mean()
+weighted_4500 = (df_merged_4500['guess_count'] * df_merged_4500['weight']).sum() / df_merged_4500['weight'].sum()
+
+# 3. NYT Target List (~3,200 Words)
+df_original = pd.read_csv(original_priors_path)
+
+# Match column names dynamically
+word_col = [c for c in df_original.columns if 'word' in c.lower()]
+prior_col = [c for c in df_original.columns if 'prior' in c.lower()]
+
+orig_words = df_original[word_col[0]] if word_col else df_original.iloc[:, 0]
+orig_priors = df_original[prior_col[0]] if prior_col else df_original.iloc[:, 1] # Index 1 = 2nd Column
+
+orig_words = orig_words.astype(str).str.strip().str.lower()
+orig_priors = orig_priors.astype(float)
+
+# Strictly identify true targets with non-zero priors (> 1e-9)
+true_target_words = set(orig_words[orig_priors > 1e-9])
+
+# Filter merged results down to just true targets
+df_merged_3200 = df_merged_4500[df_merged_4500['word'].isin(true_target_words)].copy()
+unweighted_3200 = df_merged_3200['guess_count'].mean()
+weighted_3200 = (df_merged_3200['guess_count'] * df_merged_3200['weight']).sum() / df_merged_3200['weight'].sum()
+
+# 4. Compile and Display Comparison
+comparison_data = [
+    {
+        "Dataset": "All 15k Words (Full Dictionary)",
+        "Count": len(df_results),
+        "Unweighted Avg": f"{avg_15k:.4f}",
+        "Weighted Avg": "N/A"
+    },
+    {
+        "Dataset": "Top 4,500 Words",
+        "Count": len(df_merged_4500),
+        "Unweighted Avg": f"{unweighted_4500:.4f}",
+        "Weighted Avg": f"{weighted_4500:.4f}"
+    },
+    {
+        "Dataset": f"NYT Target List ({len(df_merged_3200)} Words)",
+        "Count": len(df_merged_3200),
+        "Unweighted Avg": f"{unweighted_3200:.4f}",
+        "Weighted Avg": f"{weighted_3200:.4f}"
+    }
+]
+
+df_comparison = pd.DataFrame(comparison_data)
+
+print("--- BOT 2 SUMMARY AVERAGES ---")
+print(df_comparison.to_string(index=False, justify='left'))
+
+# ----------------------------------------
+
+import pandas as pd
+from pathlib import Path
+
+# Setup paths
+results_path = '../data/bot2_15k_results.csv'
+past_answers_path = '../data/past_answers.csv'
+
+# 1. Load Data
+df_results = pd.read_csv(results_path)
+df_past = pd.read_csv(past_answers_path)
+
+# Ensure dates are parsed correctly and text is clean
+df_past['date'] = pd.to_datetime(df_past['date'])
+df_past['solution'] = df_past['solution'].astype(str).str.lower().str.strip()
+
+# 2. Merge bot results with historical answers
+df_merged = df_past.merge(df_results, left_on='solution', right_on='target', how='inner')
+
+# 3. Create Time Splits
+def assign_era(row):
+    # Game 0 to 479 captures the original curated list
+    if row['game_num'] < 480:
+        return "Original Era (Games 0-479)"
+    else:
+        # Time split the rest by Year
+        return f"NYT Era ({row['date'].year})"
+
+df_merged['Split'] = df_merged.apply(assign_era, axis=1)
+
+# 4. Calculate Grouped Metrics
+summary = df_merged.groupby('Split').agg(
+    Total_Words=('target', 'count'),
+    Avg_Guesses=('guess_count', 'mean'),
+    Win_Rate=('won_in_6', lambda x: f"{(x.mean() * 100):.2f}%"),
+    Max_Guesses=('guess_count', 'max')
+).reset_index()
+
+# Sort to ensure Original Era is first, followed by NYT years chronologically
+summary = summary.sort_values(by='Split')
+
+# Format the average guesses
+summary['Avg_Guesses'] = summary['Avg_Guesses'].apply(lambda x: f"{x:.4f}")
+
+# 5. Output Results
+print("--- PAST WORDLE SOLUTIONS BENCHMARK ---")
+print(summary.to_string(index=False, justify='left'))
+
+print("-" * 65)
+overall_avg = df_merged['guess_count'].mean()
+overall_win = df_merged['won_in_6'].mean() * 100
+print(f"Overall Past Solutions Avg:      {overall_avg:.4f}")
+print(f"Overall Past Solutions Win Rate: {overall_win:.2f}%")
+
+# ----------------------------------------
+
