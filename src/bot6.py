@@ -7,7 +7,7 @@ from bot5 import Bot5  # Assuming Bot5 is in bot5.py
 class Bot6(Bot5):
     def __init__(self, all_words: list, priors_path: str = None, priors_dict: dict = None, 
                  feedback_matrix=None, guess_to_idx: dict = None, target_to_idx: dict = None, 
-                 turn2_cache_path: str = None, starting_repeat_prob: float = 0.10, alpha: float = 0.05):
+                 turn2_cache_path: str = None, starting_repeat_prob: float = 0.10, alpha: float = 0.01):
         
         # We will hold the original base weights separately
         self.original_priors = {}

@@ -4,44 +4,39 @@ from bot7 import Bot7  # Assuming Bot7 is in bot7.py
 
 class Bot8(Bot7):
     """
-    Bot 8: Pure Lorentzian Age-Reweighting Kernel
-    
-    Inherits Bot 7's timing-adjusted repeat probability ramp and EMA, while:
-      1. Applying a Lorentzian (Cauchy) Age-Reweighting Kernel (c = 100) to Used words.
-         This creates a flat Game 0-100 plateau and an inverse-square heavy tail.
-      2. Leaving Unseen words untouched, relying on the natural relative scaling
-         of the shrinking Unseen pool (sum_U) as common words are exhausted.
+    Bot 8: Lorentzian Age-Reweighting Kernel
     """
     def __init__(self, all_words: list, priors_path: str = None, priors_dict: dict = None, 
                  feedback_matrix=None, guess_to_idx: dict = None, target_to_idx: dict = None, 
                  turn2_cache_path: str = None, starting_repeat_prob: float = 0.10, 
                  alpha: float = 0.01, alpha_g: float = 0.10, L: float = 0.1, U: float = 1.9,
-                 initial_g_bar: float = 9.47, c_lorentz: float = 100.0,
+                 initial_g_bar: float = 9.47, 
+                 c_shoulder: float = 150, k_shoulder: float = 3.5, b_shoulder: float = 0.008,
                  used_word_game_num: dict = None, start_game_number: int = 0):
         
-        # Scale parameter for the Lorentzian kernel (default: c = 100)
-        self.c_lorentz = c_lorentz
+        # Shoulder-Dropoff parameters
+        self.c_shoulder = c_shoulder
+        self.k_shoulder = k_shoulder
+        self.b_shoulder = b_shoulder
         
-        # Track the game index (x) when each word was first chosen as a solution
         self.used_word_game_num = used_word_game_num.copy() if used_word_game_num else {}
         self.current_game_number = start_game_number
 
-        # Initialize parent (Bot7), which sets up timing ramp, EMA, and calls _rebuild_valid_guesses()
         super().__init__(all_words, priors_path=priors_path, priors_dict=priors_dict, 
                          feedback_matrix=feedback_matrix, guess_to_idx=guess_to_idx, 
                          target_to_idx=target_to_idx, turn2_cache_path=turn2_cache_path,
                          starting_repeat_prob=starting_repeat_prob, alpha=alpha,
                          alpha_g=alpha_g, L=L, U=U, initial_g_bar=initial_g_bar)
         
-        self.name = "Bot 8 (Pure Lorentzian Kernel)"
+        self.name = "Bot 8 (Shoulder-Dropoff Kernel)"
 
-    def _compute_lorentzian_multiplier(self, x_game_num: int) -> float:
+    def _compute_shoulder_multiplier(self, x_game_num: int) -> float:
         """
-        Computes the Lorentzian (Cauchy) age multiplier:
-            w(x) = 1 / (x^2 + c^2)
+        Computes the Shoulder-Dropoff age multiplier:
+            w(x) = 1 / (1 + (x/c)^k) + b
         """
         x_val = float(x_game_num)
-        return 1.0 / ((x_val ** 2.0) + (self.c_lorentz ** 2.0))
+        return (1.0 / (1.0 + (x_val / self.c_shoulder) ** self.k_shoulder)) + self.b_shoulder
 
     def _rebuild_valid_guesses(self):
         """
@@ -67,9 +62,9 @@ class Bot8(Bot7):
             # 1. Compute unnormalized effective weights across the dictionary
             for w, base_p in self.original_priors.items():
                 if w in self.used_words:
-                    # Apply Lorentzian age decay based on when the word was first played
+                    # Apply Shoulder-Dropoff age decay based on when the word was first played
                     x_origin = self.used_word_game_num.get(w, 0)
-                    age_mult = self._compute_lorentzian_multiplier(x_origin)
+                    age_mult = self._compute_shoulder_multiplier(x_origin)
                     w_eff = base_p * age_mult
                     effective_weights[w] = w_eff
                     sum_S += w_eff

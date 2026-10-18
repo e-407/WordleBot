@@ -27,7 +27,7 @@ def run_importance_sampling():
     
     priors_file = str(PROJECT_ROOT / 'data' / 'priors_reweighted.csv')
     past_answers_file = PROJECT_ROOT / 'data' / 'past_answers.csv'
-    sampled_output_file = PROJECT_ROOT / 'data' / 'sampled_bucket_evaluations.csv'
+    sampled_output_file = PROJECT_ROOT / 'data' / 'sampled_bucket_evaluations_new.csv'
 
     df_past = pd.read_csv(past_answers_file)
     all_targets = df_past['solution'].tolist()
@@ -47,7 +47,7 @@ def run_importance_sampling():
     # ---------------------------------------------------------
     # PASS 1: DISCOVER ALL BUCKETS (OR LOAD FROM BACKUP)
     # ---------------------------------------------------------
-    pass1_backup_file = PROJECT_ROOT / 'data' / 'pass1_all_discovered_buckets.csv'
+    pass1_backup_file = PROJECT_ROOT / 'data' / 'pass1_all_discovered_buckets_new.csv'
 
     if pass1_backup_file.exists():
         print(f"\nFound existing Pass 1 data! Loading {pass1_backup_file.name} and skipping the 1-hour discovery pass...")

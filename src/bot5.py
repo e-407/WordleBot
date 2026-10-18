@@ -155,17 +155,20 @@ class Bot5(BaseBot):
         if len(active_targets) == 2:
             return max(active_targets, key=lambda w: self.priors.get(w, 0))
             
-        active_t_idxs = np.array([self.target_to_idx[t] for t in active_targets if t in self.target_to_idx], dtype=np.int32)
+        active_t_idxs = np.array(
+            [self.target_to_idx[t] for t in active_targets if t in self.target_to_idx],
+            dtype=np.int32
+        )
         
         if len(active_t_idxs) == 0:
             return max(active_targets, key=lambda w: self.priors.get(w, 0))
             
         weights = self.prior_weights_target[active_t_idxs]
-        total_weight = np.sum(weights)
+        total_weight = float(np.sum(weights))
         if total_weight < 1e-12:
             total_weight = 1.0
         
-        # 1. PRE-SLICE MATRIX ONCE: Eliminates hundreds of redundant 14k-row array copies
+        # 1. PRE-SLICE MATRIX ONCE
         valid_matrix = self.matrix[self.valid_guess_idxs]
         V = len(self.valid_guess_idxs)
         row_indices_full = np.arange(V)[:, None]
@@ -175,7 +178,7 @@ class Bot5(BaseBot):
         # ---------------------------------------------------------------------
         full_sub_matrix = valid_matrix[:, active_t_idxs]
         
-        weights_m1 = np.zeros((V, 243))
+        weights_m1 = np.zeros((V, 243), dtype=np.float64)
         np.add.at(weights_m1, (row_indices_full, full_sub_matrix), weights)
         
         p_m1 = weights_m1 / (total_weight + 1e-12)
@@ -190,74 +193,92 @@ class Bot5(BaseBot):
         eval_indices = eval_indices[np.argsort(entropy_g1[eval_indices])[::-1]]
         
         # ---------------------------------------------------------------------
-        # STEP 2: Deep 2-Turn Lookahead with Zero-Allocation Buffers
+        # STEP 2: Deep 2-Turn Lookahead with Tight Lower-Bound Alpha Pruning
         # ---------------------------------------------------------------------
         best_g1_word = self.idx_to_guess[self.valid_guess_idxs[eval_indices[0]]]
         min_expected_turns = float('inf')
         
-        # 2. PRE-ALLOCATE BUFFERS ONCE: Eliminates thousands of heap allocations per game
+        # Pre-compute w * log2(w) once for all active targets
+        w_log_w_all = weights * np.log2(weights + 1e-12)
+
+        # Pre-allocate buffers once (counts_matrix is mathematically redundant)
         weights_matrix = np.zeros((V, 243), dtype=np.float64)
-        counts_matrix = np.zeros((V, 243), dtype=np.int32)
         w_log_w_matrix = np.zeros((V, 243), dtype=np.float64)
+        log_w_mat = np.zeros((V, 243), dtype=np.float64)
+        weighted_cost_matrix = np.zeros((V, 243), dtype=np.float64)
         
         for idx in eval_indices:
             g1_idx = self.valid_guess_idxs[idx]
             g1_word = self.idx_to_guess[g1_idx]
             
-            feedbacks_1 = self.matrix[g1_idx, active_t_idxs]
-            unique_f1 = np.unique(feedbacks_1)
+            feedbacks_1 = full_sub_matrix[idx]
+            unique_f1, counts_f1 = np.unique(feedbacks_1, return_counts=True)
             
-            expected_turns_g1 = 0.0
+            # Tight admissible lower bound: every non-242 bucket takes >= 1.0 turn!
+            # Singleton buckets (count == 1) add 0.0 extra turns beyond this base floor.
+            p_242 = p_m1[idx, 242]
+            expected_turns_g1 = 1.0 - p_242
+
+            if (2.0 + expected_turns_g1) >= min_expected_turns - 1e-12:
+                continue
+
+            # Only evaluate buckets with count >= 2 and f1 != 242
+            multi_mask = (counts_f1 >= 2) & (unique_f1 != 242)
+            multi_f1 = unique_f1[multi_mask]
+            multi_counts = counts_f1[multi_mask]
+
+            # Sort multi-word buckets largest probability first for earliest alpha-pruning
+            if len(multi_f1) > 1:
+                order = np.argsort(p_m1[idx, multi_f1])[::-1]
+                multi_f1 = multi_f1[order]
+                multi_counts = multi_counts[order]
+            
             pruned = False
             
-            for f1 in unique_f1:
-                mask = (feedbacks_1 == f1)
-                bucket_t_idxs = active_t_idxs[mask]
-                bucket_weights = weights[mask]
-                bucket_weight_sum = np.sum(bucket_weights)
-                p_bucket = bucket_weight_sum / total_weight
-                
+            for f1, n_bucket in zip(multi_f1, multi_counts):
+                p_bucket = p_m1[idx, f1]
                 if p_bucket < 1e-12:
                     continue
                 
-                if f1 == 242:
-                    turns_needed = 0.0
-                elif len(bucket_t_idxs) == 1:
-                    turns_needed = 1.0
-                elif len(bucket_t_idxs) == 2:
-                    w_max = np.max(bucket_weights)
-                    w_min = np.min(bucket_weights)
-                    turns_needed = 1.0 * (w_max / bucket_weight_sum) + 2.0 * (w_min / bucket_weight_sum)
+                mask = (feedbacks_1 == f1)
+                bucket_weights = weights[mask]
+                bucket_weight_sum = float(np.sum(bucket_weights))
+                
+                if n_bucket == 2:
+                    # Extra turns beyond the 1.0 base floor is simply w_min / bucket_weight_sum
+                    w_min = float(np.min(bucket_weights))
+                    extra_turns_beyond_1 = w_min / bucket_weight_sum
                 else:
+                    bucket_t_idxs = active_t_idxs[mask]
                     sub_matrix = valid_matrix[:, bucket_t_idxs]
                     
-                    # Zero buffers in-place (no garbage collection overhead)
                     weights_matrix.fill(0.0)
-                    counts_matrix.fill(0)
                     w_log_w_matrix.fill(0.0)
                     
-                    w_log_w = bucket_weights * np.log2(bucket_weights + 1e-12)
-                    
                     np.add.at(weights_matrix, (row_indices_full, sub_matrix), bucket_weights)
-                    np.add.at(counts_matrix, (row_indices_full, sub_matrix), 1)
-                    np.add.at(w_log_w_matrix, (row_indices_full, sub_matrix), w_log_w)
+                    np.add.at(w_log_w_matrix, (row_indices_full, sub_matrix), w_log_w_all[mask])
                     
-                    safe_weights = weights_matrix + 1e-12
-                    entropy_matrix = np.clip(np.log2(safe_weights) - (w_log_w_matrix / safe_weights), 0, None)
+                    # Compute log2 only on non-empty cells (skips ~96% of matrix)
+                    nz = weights_matrix > 1e-12
+                    log_w_mat.fill(0.0)
+                    weighted_cost_matrix.fill(0.0)
+
+                    np.log2(weights_matrix, out=log_w_mat, where=nz)
+
+                    # Direct weighted cost: W * (1 + 0.45 * H) = W + 0.45 * max(0, W*log2(W) - w_log_w)
+                    # When count == 1, W*log2(W) == w_log_w, so cost is automatically 1.0 * W!
+                    W_nz = weights_matrix[nz]
+                    H_weighted_nz = np.maximum(0.0, W_nz * log_w_mat[nz] - w_log_w_matrix[nz])
+                    weighted_cost_matrix[nz] = W_nz + 0.45 * H_weighted_nz
+                    weighted_cost_matrix[:, 242] = 0.0
                     
-                    cost_matrix = 1.0 + (entropy_matrix * 0.45)
-                    cost_matrix[counts_matrix == 1] = 1.0
-                    cost_matrix[:, 242] = 0.0
-                    cost_matrix[counts_matrix == 0] = 0.0
-                    
-                    p_sub = weights_matrix / bucket_weight_sum
-                    expected_after_g3 = np.sum(p_sub * cost_matrix, axis=1)
-                    turns_needed = np.min(1.0 + expected_after_g3)
+                    expected_after_g3 = np.sum(weighted_cost_matrix, axis=1) / bucket_weight_sum
+                    extra_turns_beyond_1 = float(np.min(expected_after_g3))
                 
-                expected_turns_g1 += p_bucket * turns_needed
+                expected_turns_g1 += p_bucket * extra_turns_beyond_1
                 
-                # Alpha pruning cutoff
-                if (2.0 + expected_turns_g1) >= min_expected_turns:
+                # Tight alpha pruning cutoff
+                if (2.0 + expected_turns_g1) >= min_expected_turns - 1e-12:
                     pruned = True
                     break
                 
